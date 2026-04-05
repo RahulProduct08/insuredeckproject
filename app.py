@@ -25,7 +25,8 @@ db = get_db()
 _count = db.execute("SELECT COUNT(*) FROM clients").fetchone()[0]
 db.close()
 if _count == 0:
-    import seed  # noqa: F401  — runs the seed script
+    from seed import seed as run_seed
+    run_seed()
 
 # ── App ────────────────────────────────────────────────────────────────────
 DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist")
