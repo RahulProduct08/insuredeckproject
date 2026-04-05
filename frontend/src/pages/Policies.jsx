@@ -8,9 +8,9 @@ const COLUMNS = [
   { key: 'client_name', label: 'Client' },
   { key: 'product_name', label: 'Product' },
   { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
-  { key: 'premium', label: 'Premium', render: (v) => `₹${Number(v).toLocaleString('en-IN')}` },
-  { key: 'issued_at', label: 'Issued', render: (v) => v ? new Date(v).toLocaleDateString('en-IN') : '—' },
-  { key: 'renewal_due_at', label: 'Renewal Due', render: (v) => v ? new Date(v).toLocaleDateString('en-IN') : '—' },
+  { key: 'premium', label: 'Premium', render: (v) => `$${Number(v).toLocaleString('en-US')}` },
+  { key: 'issued_at', label: 'Issued', render: (v) => v ? new Date(v).toLocaleDateString('en-US') : '—' },
+  { key: 'renewal_due_at', label: 'Renewal Due', render: (v) => v ? new Date(v).toLocaleDateString('en-US') : '—' },
 ]
 
 export default function Policies() {
@@ -60,9 +60,9 @@ export default function Policies() {
               </div>
 
               {[
-                ['Premium', `₹${Number(selectedPolicy.premium).toLocaleString('en-IN')}`],
-                ['Issued Date', selectedPolicy.issued_at ? new Date(selectedPolicy.issued_at).toLocaleDateString('en-IN') : '—'],
-                ['Renewal Due', selectedPolicy.renewal_due_at ? new Date(selectedPolicy.renewal_due_at).toLocaleDateString('en-IN') : '—'],
+                ['Premium', `$${Number(selectedPolicy.premium).toLocaleString('en-US')}`],
+                ['Issued Date', selectedPolicy.issued_at ? new Date(selectedPolicy.issued_at).toLocaleDateString('en-US') : '—'],
+                ['Renewal Due', selectedPolicy.renewal_due_at ? new Date(selectedPolicy.renewal_due_at).toLocaleDateString('en-US') : '—'],
                 ['Commission Rate', selectedPolicy.commission_rate_percent ? `${selectedPolicy.commission_rate_percent}%` : '—'],
               ].map(([label, value]) => (
                 <div key={label}>

@@ -16,12 +16,12 @@ const COLUMNS = [
       </span>
     ),
   },
-  { key: 'premium', label: 'Premium', render: (v) => `₹${Number(v).toLocaleString('en-IN')}` },
+  { key: 'premium', label: 'Premium', render: (v) => `$${Number(v).toLocaleString('en-US')}` },
   { key: 'rate_percent', label: 'Rate', render: (v) => `${v}%` },
   { key: 'amount', label: 'Commission', render: (v) => (
-    <span className="font-semibold text-slate-800">₹{Number(v).toLocaleString('en-IN')}</span>
+    <span className="font-semibold text-slate-800">${Number(v).toLocaleString('en-US')}</span>
   )},
-  { key: 'recorded_at', label: 'Date', render: (v) => v ? new Date(v).toLocaleDateString('en-IN') : '—' },
+  { key: 'recorded_at', label: 'Date', render: (v) => v ? new Date(v).toLocaleDateString('en-US') : '—' },
 ]
 
 function KpiCard({ label, value, sub, Icon, iconColor, gradient = false }) {
@@ -54,7 +54,7 @@ export default function Commissions() {
     fetchCommissions(newFilter)
   }
 
-  const fmt = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+  const fmt = (n) => `$${Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
 
   return (
     <div className="flex flex-col h-full">

@@ -21,8 +21,8 @@ const COLUMNS = [
   { key: 'client_name',  label: 'Client' },
   { key: 'product_name', label: 'Product' },
   { key: 'status',       label: 'Status',  render: (v) => <StatusBadge status={v} /> },
-  { key: 'premium',      label: 'Premium', render: (v) => `₹${Number(v).toLocaleString('en-IN')}` },
-  { key: 'updated_at',   label: 'Updated', render: (v) => v ? new Date(v).toLocaleDateString('en-IN') : '—' },
+  { key: 'premium',      label: 'Premium', render: (v) => `$${Number(v).toLocaleString('en-US')}` },
+  { key: 'updated_at',   label: 'Updated', render: (v) => v ? new Date(v).toLocaleDateString('en-US') : '—' },
 ]
 
 function FsmStepper({ currentStatus }) {
@@ -146,7 +146,7 @@ export default function Applications() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Annual Premium (₹)</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Annual Premium ($)</label>
               <input
                 type="number" required min="0"
                 value={form.premium}
@@ -207,9 +207,9 @@ export default function Applications() {
 
               {/* Fields */}
               {[
-                ['Premium', `₹${Number(selectedPolicy.premium).toLocaleString('en-IN')}`],
-                ['Created', selectedPolicy.created_at ? new Date(selectedPolicy.created_at).toLocaleDateString('en-IN') : '—'],
-                ['Updated', selectedPolicy.updated_at ? new Date(selectedPolicy.updated_at).toLocaleDateString('en-IN') : '—'],
+                ['Premium', `$${Number(selectedPolicy.premium).toLocaleString('en-US')}`],
+                ['Created', selectedPolicy.created_at ? new Date(selectedPolicy.created_at).toLocaleDateString('en-US') : '—'],
+                ['Updated', selectedPolicy.updated_at ? new Date(selectedPolicy.updated_at).toLocaleDateString('en-US') : '—'],
               ].map(([label, value]) => (
                 <div key={label}>
                   <div className="text-xs font-medium text-slate-500">{label}</div>
@@ -227,7 +227,7 @@ export default function Applications() {
                         <span className="text-slate-400">{h.from_status || 'Created'}</span>
                         <span className="text-slate-300">→</span>
                         <StatusBadge status={h.to_status} />
-                        <span className="text-slate-400 ml-auto">{h.changed_at ? new Date(h.changed_at).toLocaleDateString('en-IN') : ''}</span>
+                        <span className="text-slate-400 ml-auto">{h.changed_at ? new Date(h.changed_at).toLocaleDateString('en-US') : ''}</span>
                       </div>
                     ))}
                   </div>

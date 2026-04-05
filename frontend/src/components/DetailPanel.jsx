@@ -39,7 +39,7 @@ export default function DetailPanel({ title, item, fields = [], onSave, onClose,
   const renderValue = (field) => {
     const val = item[field.key]
     if (val === null || val === undefined || val === '') return <span className="text-slate-400">—</span>
-    if (typeof val === 'number' && field.currency) return `₹${val.toLocaleString('en-IN')}`
+    if (typeof val === 'number' && field.currency) return `$${val.toLocaleString('en-US')}`
     return String(val)
   }
 

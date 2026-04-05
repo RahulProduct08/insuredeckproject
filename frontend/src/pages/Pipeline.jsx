@@ -46,7 +46,7 @@ function ClientCard({ client, onDragStart }) {
           <div className="font-semibold text-sm text-slate-900 truncate">{client.name}</div>
           {client.income && (
             <div className="text-xs text-slate-500">
-              ₹{Number(client.income).toLocaleString('en-IN')} / yr
+              ${Number(client.income).toLocaleString('en-US')} / yr
             </div>
           )}
         </div>

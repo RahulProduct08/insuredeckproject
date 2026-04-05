@@ -10,8 +10,8 @@ import { ArrowLeftIcon } from '@heroicons/react/20/solid'
 const POLICY_COLUMNS = [
   { key: 'product_name', label: 'Product' },
   { key: 'status',       label: 'Status',  render: (v) => <StatusBadge status={v} /> },
-  { key: 'premium',      label: 'Premium', render: (v) => `₹${Number(v).toLocaleString('en-IN')}` },
-  { key: 'created_at',   label: 'Created', render: (v) => v ? new Date(v).toLocaleDateString('en-IN') : '—' },
+  { key: 'premium',      label: 'Premium', render: (v) => `$${Number(v).toLocaleString('en-US')}` },
+  { key: 'created_at',   label: 'Created', render: (v) => v ? new Date(v).toLocaleDateString('en-US') : '—' },
 ]
 
 function initials(name = '') {
@@ -127,7 +127,7 @@ export default function ClientDetail() {
             { label: 'In Progress', value: inProgressPolicies },
             { label: 'Dependents',  value: client.dependents ?? '—' },
             { label: 'Risk',        value: client.risk_appetite ?? '—', capitalize: true },
-            ...(client.income ? [{ label: 'Income', value: `₹${Number(client.income).toLocaleString('en-IN')}` }] : []),
+            ...(client.income ? [{ label: 'Income', value: `$${Number(client.income).toLocaleString('en-US')}` }] : []),
           ].map(stat => (
             <div key={stat.label} className="bg-white/10 rounded-lg px-3 py-1.5 text-center">
               <div className="text-xs text-brand-200">{stat.label}</div>

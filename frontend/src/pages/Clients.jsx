@@ -35,7 +35,7 @@ const COLUMNS = [
   { key: 'name', label: 'Name', render: (v) => <AvatarCell name={v} /> },
   { key: 'stage', label: 'Stage', render: (v) => <StatusBadge status={v} /> },
   { key: 'phone', label: 'Phone' },
-  { key: 'income', label: 'Income', render: (v) => v ? `₹${Number(v).toLocaleString('en-IN')}` : '—' },
+  { key: 'income', label: 'Income', render: (v) => v ? `$${Number(v).toLocaleString('en-US')}` : '—' },
   { key: 'age', label: 'Age' },
 ]
 
@@ -44,7 +44,7 @@ const DETAIL_FIELDS = [
   { key: 'phone',         label: 'Phone',              editable: true },
   { key: 'email',         label: 'Email',              editable: true },
   { key: 'age',           label: 'Age',                editable: true, type: 'number' },
-  { key: 'income',        label: 'Annual Income (₹)',  editable: true, type: 'number', currency: true },
+  { key: 'income',        label: 'Annual Income ($)',  editable: true, type: 'number', currency: true },
   { key: 'dependents',    label: 'Dependents',         editable: true, type: 'number' },
   {
     key: 'risk_appetite', label: 'Risk Appetite',      editable: true, type: 'select',
@@ -58,7 +58,7 @@ const DETAIL_FIELDS = [
 
 const FIELD_LABELS = {
   name: 'Full Name', phone: 'Phone', email: 'Email',
-  age: 'Age', income: 'Annual Income (₹)',
+  age: 'Age', income: 'Annual Income ($)',
 }
 
 export default function Clients() {

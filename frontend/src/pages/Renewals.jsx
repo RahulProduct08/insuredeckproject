@@ -21,13 +21,13 @@ const COLUMNS = [
   { key: 'client_name', label: 'Client' },
   { key: 'product_name', label: 'Product' },
   { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
-  { key: 'premium', label: 'Premium', render: (v) => `₹${Number(v).toLocaleString('en-IN')}` },
+  { key: 'premium', label: 'Premium', render: (v) => `$${Number(v).toLocaleString('en-US')}` },
   {
     key: 'renewal_due_at', label: 'Renewal Due',
     render: (v) => {
       if (!v) return '—'
       const days = daysUntil(v)
-      const label = new Date(v).toLocaleDateString('en-IN')
+      const label = new Date(v).toLocaleDateString('en-US')
       const color = days < 0 ? 'text-red-600 font-semibold' : days < 30 ? 'text-amber-600 font-medium' : 'text-gray-700'
       return (
         <span className={color}>

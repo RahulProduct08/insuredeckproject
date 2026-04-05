@@ -27,7 +27,7 @@ const FALLBACK = { Icon: PencilSquareIcon, color: 'bg-slate-100 text-slate-500' 
 
 function formatTs(ts) {
   if (!ts) return ''
-  return new Date(ts).toLocaleString('en-IN', {
+  return new Date(ts).toLocaleString('en-US', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })

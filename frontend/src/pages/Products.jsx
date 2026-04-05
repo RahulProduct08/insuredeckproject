@@ -5,8 +5,8 @@ import DetailPanel from '../components/DetailPanel.jsx'
 
 const COLUMNS = [
   { key: 'name', label: 'Product' },
-  { key: 'min_premium', label: 'Min Premium', render: (v) => `₹${Number(v).toLocaleString('en-IN')}` },
-  { key: 'max_premium', label: 'Max Premium', render: (v) => `₹${Number(v).toLocaleString('en-IN')}` },
+  { key: 'min_premium', label: 'Min Premium', render: (v) => `$${Number(v).toLocaleString('en-US')}` },
+  { key: 'max_premium', label: 'Max Premium', render: (v) => `$${Number(v).toLocaleString('en-US')}` },
   { key: 'commission_rate_percent', label: 'Commission %', render: (v) => `${v}%` },
   {
     key: 'is_active', label: 'Status',
@@ -22,11 +22,11 @@ const COLUMNS = [
 const DETAIL_FIELDS = [
   { key: 'name', label: 'Product Name', editable: true },
   { key: 'description', label: 'Description', editable: true, type: 'textarea' },
-  { key: 'min_premium', label: 'Min Premium (₹)', editable: true, type: 'number', currency: true },
-  { key: 'max_premium', label: 'Max Premium (₹)', editable: true, type: 'number', currency: true },
+  { key: 'min_premium', label: 'Min Premium ($)', editable: true, type: 'number', currency: true },
+  { key: 'max_premium', label: 'Max Premium ($)', editable: true, type: 'number', currency: true },
   { key: 'min_age', label: 'Min Age (years)', editable: true, type: 'number' },
   { key: 'max_age', label: 'Max Age (years)', editable: true, type: 'number' },
-  { key: 'min_income', label: 'Min Income (₹)', editable: true, type: 'number', currency: true },
+  { key: 'min_income', label: 'Min Income ($)', editable: true, type: 'number', currency: true },
   { key: 'commission_rate_percent', label: 'Commission Rate (%)', editable: true, type: 'number' },
 ]
 
