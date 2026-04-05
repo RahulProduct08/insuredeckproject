@@ -1,0 +1,14 @@
+# Database (recreated automatically on deploy)
+insurance_portal.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Node
+frontend/node_modules/
+
+# Vite build (built on Render during deploy)
+frontend/dist/

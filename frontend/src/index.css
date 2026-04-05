@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Smooth scrolling */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Skeleton shimmer utility */
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Activity timeline connector */
+.timeline-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 32px;
+  bottom: -4px;
+  width: 2px;
+  background: linear-gradient(to bottom, #e2e8f0, transparent);
+}
+
+/* Kanban drag-over highlight */
+.drag-over {
+  @apply ring-2 ring-brand-300 bg-brand-50;
+}
+
+/* Toast progress bar */
+@keyframes shrink-x {
+  from { width: 100% }
+  to   { width: 0% }
+}
