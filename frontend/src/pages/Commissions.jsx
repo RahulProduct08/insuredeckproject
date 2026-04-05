@@ -40,12 +40,14 @@ function KpiCard({ label, value, sub, Icon, iconColor, gradient = false }) {
 }
 
 export default function Commissions() {
-  const { commissions, commissionSummary, fetchCommissions, fetchCommissionSummary, commissionsLoading } = useStore()
+  const { commissions, commissionSummary, commissionForecast, fetchCommissions,
+          fetchCommissionSummary, fetchCommissionForecast, commissionsLoading } = useStore()
   const [filter, setFilter] = useState({ event_type: '' })
 
   useEffect(() => {
     fetchCommissionSummary()
     fetchCommissions(filter)
+    fetchCommissionForecast()
   }, [])
 
   const handleFilter = (key, value) => {
@@ -65,7 +67,7 @@ export default function Commissions() {
       </div>
 
       {/* KPI Cards */}
-      <div className="px-6 py-5 grid grid-cols-3 gap-4 shrink-0 border-b border-slate-100 bg-slate-50">
+      <div className="px-6 py-5 grid grid-cols-3 lg:grid-cols-5 gap-4 shrink-0 border-b border-slate-100 bg-slate-50">
         <KpiCard
           label="Total Earnings"
           value={fmt(commissionSummary.total)}
@@ -88,6 +90,24 @@ export default function Commissions() {
           Icon={ArrowPathIcon}
           iconColor="text-green-600"
         />
+        {commissionForecast && (
+          <>
+            <KpiCard
+              label="3-Month Forecast"
+              value={fmt(commissionForecast.forecast_3_months)}
+              sub="Pipeline + renewals"
+              Icon={ArrowTrendingUpIcon}
+              iconColor="text-amber-600"
+            />
+            <KpiCard
+              label="6-Month Forecast"
+              value={fmt(commissionForecast.forecast_6_months)}
+              sub="Pipeline + renewals"
+              Icon={ArrowTrendingUpIcon}
+              iconColor="text-orange-600"
+            />
+          </>
+        )}
       </div>
 
       {/* Filter bar */}

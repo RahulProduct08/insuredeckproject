@@ -1,14 +1,7 @@
-"""
-app.py
-------
-Flask application entry point for the Insurance Agent Portal.
-
-In production (Render): serves both the REST API and the React static build.
-In development: API only (Vite dev server proxies /api/* here).
-"""
+"""app.py — Flask entry point for InsureDesk."""
 
 import os
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request, jsonify
 from flask_cors import CORS
 
 from database import init_db, get_db
@@ -17,8 +10,13 @@ from routes.products import products_bp
 from routes.policies import policies_bp
 from routes.commissions import commissions_bp
 from routes.activities import activities_bp
+from routes.auth import auth_bp
+from routes.agents import agents_bp
+from routes.tasks import tasks_bp
+from routes.analytics import analytics_bp
+from routes.needs_analysis import needs_bp
 
-# ── Startup: always init schema and seed if empty ──────────────────────────
+# ── Startup ────────────────────────────────────────────────────────────────
 init_db()
 
 db = get_db()
@@ -32,21 +30,26 @@ if _count == 0:
 DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist")
 
 app = Flask(__name__, static_folder=DIST, static_url_path="")
-CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
+CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173",
+                   "https://insuredeck.onrender.com"])
 
 app.register_blueprint(clients_bp,     url_prefix="/api")
 app.register_blueprint(products_bp,    url_prefix="/api")
 app.register_blueprint(policies_bp,    url_prefix="/api")
 app.register_blueprint(commissions_bp, url_prefix="/api")
 app.register_blueprint(activities_bp,  url_prefix="/api")
+app.register_blueprint(auth_bp)
+app.register_blueprint(agents_bp)
+app.register_blueprint(tasks_bp)
+app.register_blueprint(analytics_bp)
+app.register_blueprint(needs_bp)
 
 
 @app.route("/api/health")
 def health():
-    return {"status": "ok", "service": "Insurance Agent Portal API"}
+    return {"status": "ok", "service": "InsureDesk API v2"}
 
 
-# Serve React for all non-API routes (SPA fallback)
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve_react(path):

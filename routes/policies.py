@@ -1,30 +1,10 @@
-"""
-routes/policies.py
-------------------
-Policy CRUD + FSM status transitions.
-
-Valid status transitions:
-    Draft → Submitted
-    Submitted → Underwriting | Rejected
-    Underwriting → Approved | Rejected
-    Approved → Issued | Rejected
-    Issued → Lapsed
-    Rejected → (terminal)
-    Lapsed → (terminal)
-
-Endpoints:
-    GET    /api/policies                        list; ?status=&client_id=&renewal_window=N
-    POST   /api/policies                        create (status=Draft)
-    GET    /api/policies/<id>                   detail with status_history
-    PUT    /api/policies/<id>                   update editable fields
-    POST   /api/policies/<id>/transition        advance FSM status
-"""
+"""routes/policies.py — Policy CRUD + FSM + eligibility validation."""
 
 from __future__ import annotations
 
 import uuid
 import json
-from datetime import datetime, timezone, timedelta
+import datetime
 
 from flask import Blueprint, jsonify, request
 
@@ -32,43 +12,43 @@ from database import get_db, row_to_dict
 
 policies_bp = Blueprint("policies", __name__)
 
-# FSM transition map: current_status → allowed next statuses
 VALID_TRANSITIONS: dict[str, list[str]] = {
-    "Draft":       ["Submitted"],
-    "Submitted":   ["Underwriting", "Rejected"],
+    "Draft":        ["Submitted"],
+    "Submitted":    ["Underwriting", "Rejected"],
     "Underwriting": ["Approved", "Rejected"],
-    "Approved":    ["Issued", "Rejected"],
-    "Issued":      ["Lapsed"],
-    "Rejected":    [],
-    "Lapsed":      [],
+    "Approved":     ["Issued", "Rejected"],
+    "Issued":       ["Lapsed"],
+    "Rejected":     [],
+    "Lapsed":       [],
 }
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
-def _log_activity(db, client_id: str, activity_type: str, description: str, policy_id: str | None = None) -> None:
+def _log_activity(db, client_id, activity_type, description, policy_id=None, agent_id=None):
     db.execute("""
-        INSERT INTO activities (activity_id, client_id, policy_id, activity_type, description, metadata, timestamp)
-        VALUES (?, ?, ?, ?, ?, '{}', ?)
-    """, [str(uuid.uuid4()), client_id, policy_id, activity_type, description, _utcnow()])
+        INSERT INTO activities (activity_id, client_id, policy_id, agent_id,
+            activity_type, description, metadata, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, '{}', ?)
+    """, [str(uuid.uuid4()), client_id, policy_id, agent_id,
+          activity_type, description, _utcnow()])
 
 
-# ---------------------------------------------------------------------------
 # GET /api/policies
-# ---------------------------------------------------------------------------
 @policies_bp.route("/policies", methods=["GET"])
 def list_policies():
-    status_filter = request.args.get("status")      # comma-separated or single
+    status_filter = request.args.get("status")
     client_id = request.args.get("client_id")
-    renewal_window = request.args.get("renewal_window")  # days
+    agent_id = request.args.get("agent_id")
+    renewal_window = request.args.get("renewal_window")
 
     query = """
         SELECT p.*, c.name AS client_name, pr.name AS product_name
         FROM policies p
-        JOIN clients c ON p.client_id = c.client_id
-        JOIN products pr ON p.product_id = pr.product_id
+        JOIN clients c ON p.client_id=c.client_id
+        JOIN products pr ON p.product_id=pr.product_id
         WHERE 1=1
     """
     params: list = []
@@ -78,16 +58,17 @@ def list_policies():
         placeholders = ",".join("?" * len(statuses))
         query += f" AND p.status IN ({placeholders})"
         params += statuses
-
     if client_id:
-        query += " AND p.client_id = ?"
+        query += " AND p.client_id=?"
         params.append(client_id)
-
+    if agent_id:
+        query += " AND p.agent_id=?"
+        params.append(agent_id)
     if renewal_window:
         try:
             days = int(renewal_window)
-            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-            future = (datetime.now(timezone.utc) + timedelta(days=days)).strftime("%Y-%m-%d")
+            today = datetime.date.today().isoformat()
+            future = (datetime.date.today() + datetime.timedelta(days=days)).isoformat()
             query += " AND date(p.renewal_due_at) BETWEEN date(?) AND date(?)"
             params += [today, future]
         except ValueError:
@@ -101,9 +82,7 @@ def list_policies():
     return jsonify([row_to_dict(r) for r in rows])
 
 
-# ---------------------------------------------------------------------------
 # POST /api/policies
-# ---------------------------------------------------------------------------
 @policies_bp.route("/policies", methods=["POST"])
 def create_policy():
     body = request.get_json(force=True) or {}
@@ -117,62 +96,80 @@ def create_policy():
 
     db = get_db()
 
-    # Validate client
-    client = db.execute("SELECT * FROM clients WHERE client_id=?", [client_id]).fetchone()
+    client = row_to_dict(db.execute("SELECT * FROM clients WHERE client_id=?", [client_id]).fetchone())
     if not client:
         db.close()
         return jsonify({"error": "Client not found"}), 404
 
-    # Validate product
-    product = db.execute("SELECT * FROM products WHERE product_id=?", [product_id]).fetchone()
+    product = row_to_dict(db.execute("SELECT * FROM products WHERE product_id=?", [product_id]).fetchone())
     if not product:
         db.close()
         return jsonify({"error": "Product not found"}), 404
 
+    # Eligibility validation
+    errors = []
+    age = client.get("age")
+    income = client.get("income")
+    premium_f = float(premium)
+
+    if age is not None:
+        if product.get("min_age") and age < product["min_age"]:
+            errors.append(f"Client age ({age}) below product minimum ({product['min_age']})")
+        if product.get("max_age") and age > product["max_age"]:
+            errors.append(f"Client age ({age}) exceeds product maximum ({product['max_age']})")
+    if income is not None and product.get("min_income") and income < product["min_income"]:
+        errors.append(f"Client income (${income:,.0f}) below product minimum (${product['min_income']:,.0f})")
+    if premium_f < product.get("min_premium", 0):
+        errors.append(f"Premium (${premium_f:,.2f}) below product minimum (${product['min_premium']:,.2f})")
+    if premium_f > product.get("max_premium", 9_999_999):
+        errors.append(f"Premium (${premium_f:,.2f}) exceeds product maximum (${product['max_premium']:,.2f})")
+
+    if errors:
+        db.close()
+        return jsonify({"error": "Eligibility check failed", "details": errors}), 422
+
     docs = body.get("documents_checklist", ["ID Proof", "Income Proof", "Medical Report", "Signed Proposal Form"])
     policy_id = str(uuid.uuid4())
     now = _utcnow()
+    agent_id = body.get("agent_id")
 
     db.execute("""
         INSERT INTO policies
-          (policy_id, client_id, product_id, premium, status,
+          (policy_id, client_id, product_id, agent_id, premium, status,
            documents_checklist, documents_attached, issued_at, renewal_due_at, created_at, updated_at)
-        VALUES (?, ?, ?, ?, 'Draft', ?, '[]', NULL, NULL, ?, ?)
-    """, [policy_id, client_id, product_id, float(premium), json.dumps(docs), now, now])
+        VALUES (?, ?, ?, ?, ?, 'Draft', ?, '[]', NULL, NULL, ?, ?)
+    """, [policy_id, client_id, product_id, agent_id, premium_f, json.dumps(docs), now, now])
 
-    # Initial status history
     db.execute("""
         INSERT INTO policy_status_history (policy_id, from_status, to_status, changed_at)
         VALUES (?, NULL, 'Draft', ?)
     """, [policy_id, now])
 
-    product_name = product["name"]
     _log_activity(db, client_id, "policy_created",
-                  f"Policy created for {product_name}. Status: Draft.", policy_id)
+                  f"Policy created for {product['name']}. Status: Draft.",
+                  policy_id, agent_id)
 
     db.commit()
     row = db.execute("""
         SELECT p.*, c.name AS client_name, pr.name AS product_name
         FROM policies p
-        JOIN clients c ON p.client_id = c.client_id
-        JOIN products pr ON p.product_id = pr.product_id
+        JOIN clients c ON p.client_id=c.client_id
+        JOIN products pr ON p.product_id=pr.product_id
         WHERE p.policy_id=?
     """, [policy_id]).fetchone()
     db.close()
     return jsonify(row_to_dict(row)), 201
 
 
-# ---------------------------------------------------------------------------
 # GET /api/policies/<id>
-# ---------------------------------------------------------------------------
 @policies_bp.route("/policies/<policy_id>", methods=["GET"])
 def get_policy(policy_id: str):
     db = get_db()
     row = db.execute("""
         SELECT p.*, c.name AS client_name, pr.name AS product_name, pr.commission_rate_percent
         FROM policies p
-        JOIN clients c ON p.client_id = c.client_id
-        JOIN products pr ON p.product_id = pr.product_id
+        JOIN clients c ON p.client_id=c.client_id
+        JOIN products pr ON p.product_id=pr.product_id
         WHERE p.policy_id=?
     """, [policy_id]).fetchone()
 
@@ -181,21 +178,15 @@ def get_policy(policy_id: str):
         return jsonify({"error": "Policy not found"}), 404
 
     policy = row_to_dict(row)
-
     history = db.execute("""
-        SELECT * FROM policy_status_history
-        WHERE policy_id=?
-        ORDER BY changed_at ASC
+        SELECT * FROM policy_status_history WHERE policy_id=? ORDER BY changed_at ASC
     """, [policy_id]).fetchall()
     policy["status_history"] = [dict(h) for h in history]
-
     db.close()
     return jsonify(policy)
 
 
-# ---------------------------------------------------------------------------
 # PUT /api/policies/<id>
-# ---------------------------------------------------------------------------
 @policies_bp.route("/policies/<policy_id>", methods=["PUT"])
 def update_policy(policy_id: str):
     db = get_db()
@@ -218,31 +209,28 @@ def update_policy(policy_id: str):
         return jsonify(row_to_dict(existing))
 
     updates["updated_at"] = _utcnow()
-    set_clause = ", ".join(f"{k} = ?" for k in updates)
-    values = list(updates.values()) + [policy_id]
-
-    db.execute(f"UPDATE policies SET {set_clause} WHERE policy_id = ?", values)
+    set_clause = ", ".join(f"{k}=?" for k in updates)
+    db.execute(f"UPDATE policies SET {set_clause} WHERE policy_id=?",
+               [*updates.values(), policy_id])
     db.commit()
 
     row = db.execute("""
         SELECT p.*, c.name AS client_name, pr.name AS product_name
         FROM policies p
-        JOIN clients c ON p.client_id = c.client_id
-        JOIN products pr ON p.product_id = pr.product_id
+        JOIN clients c ON p.client_id=c.client_id
+        JOIN products pr ON p.product_id=pr.product_id
         WHERE p.policy_id=?
     """, [policy_id]).fetchone()
     db.close()
     return jsonify(row_to_dict(row))
 
 
-# ---------------------------------------------------------------------------
 # POST /api/policies/<id>/transition
-# ---------------------------------------------------------------------------
 @policies_bp.route("/policies/<policy_id>/transition", methods=["POST"])
 def transition_policy(policy_id: str):
     body = request.get_json(force=True) or {}
     new_status = (body.get("new_status") or "").strip()
-    agent_id = body.get("agent_id", "AGENT-001")
+    agent_id = body.get("agent_id")
 
     if not new_status:
         return jsonify({"error": "new_status is required"}), 400
@@ -258,31 +246,26 @@ def transition_policy(policy_id: str):
     product_id = policy["product_id"]
     premium = policy["premium"]
 
-    # Validate FSM
     allowed_next = VALID_TRANSITIONS.get(current_status, [])
     if new_status not in allowed_next:
         db.close()
-        return jsonify({
-            "error": f"Invalid transition: {current_status} → {new_status}",
-            "allowed": allowed_next,
-        }), 400
+        return jsonify({"error": f"Invalid transition: {current_status} → {new_status}",
+                        "allowed": allowed_next}), 400
 
     now = _utcnow()
     extra_updates = ""
     extra_params: list = []
-
-    # Handle Issued terminal state
     commission_record = None
+
     if new_status == "Issued":
-        issued_at = now
-        renewal_due_at = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
-        extra_updates = ", issued_at = ?, renewal_due_at = ?"
-        extra_params = [issued_at, renewal_due_at]
+        renewal_due_at = (datetime.datetime.now(datetime.timezone.utc) +
+                          datetime.timedelta(days=365)).isoformat()
+        extra_updates = ", issued_at=?, renewal_due_at=?"
+        extra_params = [now, renewal_due_at]
 
-        # Update client stage → Closed
-        db.execute("UPDATE clients SET stage='Closed', updated_at=? WHERE client_id=?", [now, client_id])
+        db.execute("UPDATE clients SET stage='Closed', updated_at=? WHERE client_id=?",
+                   [now, client_id])
 
-        # Auto-create sale commission
         product = db.execute("SELECT * FROM products WHERE product_id=?", [product_id]).fetchone()
         rate = product["commission_rate_percent"]
         commission_amount = round(float(premium) * rate / 100, 2)
@@ -296,52 +279,37 @@ def transition_policy(policy_id: str):
         """, [commission_id, policy_id, product_id, client_id,
               commission_amount, rate, float(premium), agent_id, now])
 
-        commission_record = {
-            "commission_id": commission_id,
-            "event_type": "sale",
-            "amount": commission_amount,
-            "rate_percent": rate,
-        }
+        commission_record = {"commission_id": commission_id,
+                             "event_type": "sale", "amount": commission_amount,
+                             "rate_percent": rate}
 
-        _log_activity(db, client_id,
-                      "commission_recorded",
-                      f"Sale commission of ${commission_amount:,.2f} recorded at {rate}% rate.",
-                      policy_id)
+        _log_activity(db, client_id, "commission_recorded",
+                      f"Sale commission of ${commission_amount:,.2f} at {rate}%.",
+                      policy_id, agent_id)
 
-    # Handle Rejected state
     elif new_status == "Rejected":
-        # Roll client back to Negotiation if currently Closed or Proposal
         client = db.execute("SELECT stage FROM clients WHERE client_id=?", [client_id]).fetchone()
         if client and client["stage"] in ("Closed", "Proposal", "Negotiation"):
-            db.execute("UPDATE clients SET stage='Negotiation', updated_at=? WHERE client_id=?", [now, client_id])
-
+            db.execute("UPDATE clients SET stage='Negotiation', updated_at=? WHERE client_id=?",
+                       [now, client_id])
         _log_activity(db, client_id, "follow_up",
-                      f"Policy rejected. Review with client and consider alternative products.",
-                      policy_id)
+                      "Policy rejected. Review with client and consider alternatives.",
+                      policy_id, agent_id)
 
-    # Update policy status
     db.execute(f"""
-        UPDATE policies
-        SET status=?, updated_at=?{extra_updates}
-        WHERE policy_id=?
+        UPDATE policies SET status=?, updated_at=?{extra_updates} WHERE policy_id=?
     """, [new_status, now] + extra_params + [policy_id])
 
-    # Status history
     db.execute("""
         INSERT INTO policy_status_history (policy_id, from_status, to_status, changed_at)
         VALUES (?, ?, ?, ?)
     """, [policy_id, current_status, new_status, now])
 
-    # Activity log
     _log_activity(db, client_id, "status_change",
-                  f"Policy moved from {current_status} to {new_status}.", policy_id)
+                  f"Policy: {current_status} → {new_status}.", policy_id, agent_id)
 
     db.commit()
     db.close()
 
-    return jsonify({
-        "policy_id": policy_id,
-        "previous_status": current_status,
-        "new_status": new_status,
-        "commission_record": commission_record,
-    })
+    return jsonify({"policy_id": policy_id, "previous_status": current_status,
+                    "new_status": new_status, "commission_record": commission_record})

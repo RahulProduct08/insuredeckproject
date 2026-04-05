@@ -1,8 +1,5 @@
 /**
- * useStore.js
- * -----------
- * Zustand global store — single store with domain slices.
- * Derived state (applications, renewals) is computed in page components with useMemo.
+ * useStore.js — Zustand global store for InsureDesk.
  */
 
 import { create } from 'zustand'
@@ -10,21 +7,42 @@ import * as api from '../api.js'
 
 const useStore = create((set, get) => ({
 
-  // ── Clients ──────────────────────────────────────────────────────────────
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  agent: JSON.parse(localStorage.getItem('insuredesk_agent') || 'null'),
+  authLoading: false,
+
+  login: async (email, password) => {
+    set({ authLoading: true })
+    try {
+      const { token, agent } = await api.login({ email, password })
+      localStorage.setItem('insuredesk_token', token)
+      localStorage.setItem('insuredesk_agent', JSON.stringify(agent))
+      set({ agent })
+      return agent
+    } catch (e) {
+      get().pushToast(e.message, 'error')
+      throw e
+    } finally {
+      set({ authLoading: false })
+    }
+  },
+
+  logout: () => {
+    localStorage.removeItem('insuredesk_token')
+    localStorage.removeItem('insuredesk_agent')
+    set({ agent: null })
+  },
+
+  // ── Clients ───────────────────────────────────────────────────────────────
   clients: [],
   selectedClient: null,
   clientsLoading: false,
 
   fetchClients: async (params) => {
     set({ clientsLoading: true })
-    try {
-      const clients = await api.getClients(params)
-      set({ clients })
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-    } finally {
-      set({ clientsLoading: false })
-    }
+    try { set({ clients: await api.getClients(params) }) }
+    catch (e) { get().pushToast(e.message, 'error') }
+    finally { set({ clientsLoading: false }) }
   },
 
   fetchClient: async (id) => {
@@ -32,21 +50,16 @@ const useStore = create((set, get) => ({
       const client = await api.getClient(id)
       set({ selectedClient: client })
       return client
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-    }
+    } catch (e) { get().pushToast(e.message, 'error') }
   },
 
   createClient: async (body) => {
     try {
       const client = await api.createClient(body)
       set(s => ({ clients: [client, ...s.clients] }))
-      get().pushToast('Client added successfully', 'success')
+      get().pushToast('Client added', 'success')
       return client
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-      throw e
-    }
+    } catch (e) { get().pushToast(e.message, 'error'); throw e }
   },
 
   updateClient: async (id, body) => {
@@ -57,29 +70,21 @@ const useStore = create((set, get) => ({
         selectedClient: s.selectedClient?.client_id === id ? updated : s.selectedClient,
       }))
       return updated
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-      throw e
-    }
+    } catch (e) { get().pushToast(e.message, 'error'); throw e }
   },
 
   setSelectedClient: (client) => set({ selectedClient: client }),
 
-  // ── Products ─────────────────────────────────────────────────────────────
+  // ── Products ──────────────────────────────────────────────────────────────
   products: [],
   selectedProduct: null,
   productsLoading: false,
 
   fetchProducts: async (params) => {
     set({ productsLoading: true })
-    try {
-      const products = await api.getProducts(params)
-      set({ products })
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-    } finally {
-      set({ productsLoading: false })
-    }
+    try { set({ products: await api.getProducts(params) }) }
+    catch (e) { get().pushToast(e.message, 'error') }
+    finally { set({ productsLoading: false }) }
   },
 
   updateProduct: async (id, body) => {
@@ -91,29 +96,21 @@ const useStore = create((set, get) => ({
       }))
       get().pushToast('Product updated', 'success')
       return updated
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-      throw e
-    }
+    } catch (e) { get().pushToast(e.message, 'error'); throw e }
   },
 
   setSelectedProduct: (product) => set({ selectedProduct: product }),
 
-  // ── Policies ─────────────────────────────────────────────────────────────
+  // ── Policies ──────────────────────────────────────────────────────────────
   policies: [],
   selectedPolicy: null,
   policiesLoading: false,
 
   fetchPolicies: async (params) => {
     set({ policiesLoading: true })
-    try {
-      const policies = await api.getPolicies(params)
-      set({ policies })
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-    } finally {
-      set({ policiesLoading: false })
-    }
+    try { set({ policies: await api.getPolicies(params) }) }
+    catch (e) { get().pushToast(e.message, 'error') }
+    finally { set({ policiesLoading: false }) }
   },
 
   fetchPolicy: async (id) => {
@@ -121,9 +118,7 @@ const useStore = create((set, get) => ({
       const policy = await api.getPolicy(id)
       set({ selectedPolicy: policy })
       return policy
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-    }
+    } catch (e) { get().pushToast(e.message, 'error') }
   },
 
   createPolicy: async (body) => {
@@ -132,71 +127,56 @@ const useStore = create((set, get) => ({
       set(s => ({ policies: [policy, ...s.policies] }))
       get().pushToast('Policy created', 'success')
       return policy
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-      throw e
-    }
+    } catch (e) { get().pushToast(e.message, 'error'); throw e }
   },
 
-  transitionPolicy: async (id, newStatus, agentId = 'AGENT-001') => {
+  transitionPolicy: async (id, newStatus) => {
+    const agent = get().agent
     try {
-      const result = await api.transitionPolicy(id, { new_status: newStatus, agent_id: agentId })
-      // Refresh the policy in the list
+      await api.transitionPolicy(id, { new_status: newStatus, agent_id: agent?.agent_id })
       const updated = await api.getPolicy(id)
       set(s => ({
         policies: s.policies.map(p => p.policy_id === id ? updated : p),
         selectedPolicy: s.selectedPolicy?.policy_id === id ? updated : s.selectedPolicy,
       }))
-      get().pushToast(`Status updated to ${newStatus}`, 'success')
-      return result
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-      throw e
-    }
+      get().pushToast(`Status → ${newStatus}`, 'success')
+    } catch (e) { get().pushToast(e.message, 'error'); throw e }
   },
 
   setSelectedPolicy: (policy) => set({ selectedPolicy: policy }),
 
-  // ── Commissions ──────────────────────────────────────────────────────────
+  // ── Commissions ───────────────────────────────────────────────────────────
   commissions: [],
   commissionSummary: { total: 0, sale_total: 0, renewal_total: 0, count: 0 },
+  commissionForecast: null,
   commissionsLoading: false,
 
   fetchCommissions: async (params) => {
     set({ commissionsLoading: true })
-    try {
-      const commissions = await api.getCommissions(params)
-      set({ commissions })
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-    } finally {
-      set({ commissionsLoading: false })
-    }
+    try { set({ commissions: await api.getCommissions(params) }) }
+    catch (e) { get().pushToast(e.message, 'error') }
+    finally { set({ commissionsLoading: false }) }
   },
 
   fetchCommissionSummary: async () => {
-    try {
-      const summary = await api.getCommissionSummary()
-      set({ commissionSummary: summary })
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-    }
+    try { set({ commissionSummary: await api.getCommissionSummary() }) }
+    catch (e) { get().pushToast(e.message, 'error') }
   },
 
-  // ── Activities ───────────────────────────────────────────────────────────
+  fetchCommissionForecast: async () => {
+    try { set({ commissionForecast: await api.getCommissionForecast() }) }
+    catch (e) { get().pushToast(e.message, 'error') }
+  },
+
+  // ── Activities ────────────────────────────────────────────────────────────
   activities: [],
   activitiesLoading: false,
 
   fetchActivities: async (params) => {
     set({ activitiesLoading: true })
-    try {
-      const activities = await api.getActivities(params)
-      set({ activities })
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-    } finally {
-      set({ activitiesLoading: false })
-    }
+    try { set({ activities: await api.getActivities(params) }) }
+    catch (e) { get().pushToast(e.message, 'error') }
+    finally { set({ activitiesLoading: false }) }
   },
 
   createActivity: async (body) => {
@@ -205,18 +185,60 @@ const useStore = create((set, get) => ({
       set(s => ({ activities: [activity, ...s.activities] }))
       get().pushToast('Note logged', 'success')
       return activity
-    } catch (e) {
-      get().pushToast(e.message, 'error')
-      throw e
-    }
+    } catch (e) { get().pushToast(e.message, 'error'); throw e }
   },
 
-  // ── Toast notifications ──────────────────────────────────────────────────
-  toasts: [],
+  // ── Tasks ─────────────────────────────────────────────────────────────────
+  tasks: [],
+  tasksLoading: false,
 
+  fetchTasks: async (params) => {
+    set({ tasksLoading: true })
+    try { set({ tasks: await api.getTasks(params) }) }
+    catch (e) { get().pushToast(e.message, 'error') }
+    finally { set({ tasksLoading: false }) }
+  },
+
+  createTask: async (body) => {
+    try {
+      const task = await api.createTask(body)
+      set(s => ({ tasks: [task, ...s.tasks] }))
+      get().pushToast('Task created', 'success')
+      return task
+    } catch (e) { get().pushToast(e.message, 'error'); throw e }
+  },
+
+  updateTask: async (id, body) => {
+    try {
+      const updated = await api.updateTask(id, body)
+      set(s => ({ tasks: s.tasks.map(t => t.task_id === id ? updated : t) }))
+      if (body.status === 'completed') get().pushToast('Task completed!', 'success')
+      return updated
+    } catch (e) { get().pushToast(e.message, 'error'); throw e }
+  },
+
+  deleteTask: async (id) => {
+    try {
+      await api.deleteTask(id)
+      set(s => ({ tasks: s.tasks.filter(t => t.task_id !== id) }))
+    } catch (e) { get().pushToast(e.message, 'error') }
+  },
+
+  // ── Analytics ─────────────────────────────────────────────────────────────
+  analytics: null,
+  analyticsLoading: false,
+
+  fetchAnalytics: async (params) => {
+    set({ analyticsLoading: true })
+    try { set({ analytics: await api.getAnalyticsSummary(params) }) }
+    catch (e) { get().pushToast(e.message, 'error') }
+    finally { set({ analyticsLoading: false }) }
+  },
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  toasts: [],
   pushToast: (msg, type = 'info') =>
     set(s => ({ toasts: [...s.toasts, { id: Date.now() + Math.random(), msg, type }] })),
-
   removeToast: (id) =>
     set(s => ({ toasts: s.toasts.filter(t => t.id !== id) })),
 

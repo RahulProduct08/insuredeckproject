@@ -31,10 +31,18 @@ function AvatarCell({ name }) {
   )
 }
 
+function ScoreBadge({ score }) {
+  const color = score >= 70 ? 'bg-emerald-100 text-emerald-700'
+    : score >= 50 ? 'bg-amber-100 text-amber-700'
+    : 'bg-slate-100 text-slate-500'
+  return <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${color}`}>{score}</span>
+}
+
 const COLUMNS = [
   { key: 'name', label: 'Name', render: (v) => <AvatarCell name={v} /> },
+  { key: 'lead_score', label: 'Score', render: (v) => <ScoreBadge score={v ?? 50} /> },
   { key: 'stage', label: 'Stage', render: (v) => <StatusBadge status={v} /> },
-  { key: 'phone', label: 'Phone' },
+  { key: 'lead_source', label: 'Source', render: (v) => v || '—' },
   { key: 'income', label: 'Income', render: (v) => v ? `$${Number(v).toLocaleString('en-US')}` : '—' },
   { key: 'age', label: 'Age' },
 ]
@@ -54,6 +62,10 @@ const DETAIL_FIELDS = [
     key: 'stage',         label: 'Pipeline Stage',     editable: true, type: 'select',
     options: ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Closed'],
   },
+  {
+    key: 'lead_source',   label: 'Lead Source',        editable: true, type: 'select',
+    options: ['Referral', 'Online Ad', 'Cold Call', 'Event', 'Website', 'Social Media', 'Existing Client', 'Other'],
+  },
 ]
 
 const FIELD_LABELS = {
@@ -65,7 +77,7 @@ export default function Clients() {
   const navigate = useNavigate()
   const { clients, fetchClients, clientsLoading, selectedClient, setSelectedClient, createClient, updateClient } = useStore()
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ name: '', phone: '', email: '', age: '', income: '' })
+  const [form, setForm] = useState({ name: '', phone: '', email: '', age: '', income: '', lead_source: 'Other' })
   const [creating, setCreating] = useState(false)
 
   useEffect(() => { fetchClients() }, [])
@@ -85,7 +97,7 @@ export default function Clients() {
         income: form.income ? Number(form.income) : undefined,
       })
       setShowCreate(false)
-      setForm({ name: '', phone: '', email: '', age: '', income: '' })
+      setForm({ name: '', phone: '', email: '', age: '', income: '', lead_source: 'Other' })
       fetchClients()
     } finally {
       setCreating(false)
@@ -131,6 +143,18 @@ export default function Clients() {
                 />
               </div>
             ))}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Lead Source</label>
+              <select
+                value={form.lead_source}
+                onChange={e => setForm(f => ({ ...f, lead_source: e.target.value }))}
+                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                {['Referral','Online Ad','Cold Call','Event','Website','Social Media','Existing Client','Other'].map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex gap-2 pt-2">
               <button
                 type="submit"
