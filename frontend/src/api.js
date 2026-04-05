@@ -43,8 +43,8 @@ export const register = (body) => fetch(`${BASE}/auth/register`, {
 export const getMe = () => request('GET', '/auth/me')
 
 // Agents
-export const getAgents = () => request('GET', '/api/agents')
-export const updateAgent = (id, body) => request('PATCH', `/api/agents/${id}`, body)
+export const getAgents = () => request('GET', '/agents')
+export const updateAgent = (id, body) => request('PATCH', `/agents/${id}`, body)
 
 // Clients
 export const getClients = (params) => request('GET', `/clients${qs(params)}`)
