@@ -9,6 +9,7 @@ import datetime
 from flask import Blueprint, jsonify, request
 
 from database import get_db, row_to_dict
+from routes.hierarchy import compute_and_insert_ledger
 
 policies_bp = Blueprint("policies", __name__)
 
@@ -282,6 +283,9 @@ def transition_policy(policy_id: str):
         commission_record = {"commission_id": commission_id,
                              "event_type": "sale", "amount": commission_amount,
                              "rate_percent": rate}
+
+        # Populate immutable commission ledger (BASE + OVERRIDE via BFS)
+        compute_and_insert_ledger(db, policy_id, agent_id, product_id, float(premium), float(rate))
 
         _log_activity(db, client_id, "commission_recorded",
                       f"Sale commission of ${commission_amount:,.2f} at {rate}%.",

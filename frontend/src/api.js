@@ -89,3 +89,12 @@ export const getAnalyticsSummary = (params) => request('GET', `/analytics/summar
 // Needs Analysis
 export const getNeedsAnalyses = (clientId) => request('GET', `/needs-analysis/client/${clientId}`)
 export const createNeedsAnalysis = (body) => request('POST', '/needs-analysis', body)
+
+// Hierarchy + Commission Ledger
+export const getHierarchyGraph = () => request('GET', '/hierarchy/graph')
+export const getAgentHierarchy = (id) => request('GET', `/hierarchy/agent/${id}`)
+export const createHierarchyLink = (body) => request('POST', '/hierarchy/link', body)
+export const deleteHierarchyLink = (id) => request('DELETE', `/hierarchy/link/${id}`)
+export const getLedger = (params) => request('GET', `/hierarchy/commissions${qs(params)}`)
+export const getLedgerSummary = () => request('GET', '/hierarchy/commissions/summary')
+export const getLedgerFlow = (policyId) => request('GET', `/hierarchy/commissions/flow/${policyId}`)

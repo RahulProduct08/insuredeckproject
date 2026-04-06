@@ -4,7 +4,7 @@ import {
   UsersIcon, ChartBarIcon, ShieldCheckIcon, DocumentTextIcon,
   CheckBadgeIcon, ArrowPathIcon, BanknotesIcon, HomeIcon,
   PresentationChartLineIcon, ClipboardDocumentListIcon,
-  ArrowRightStartOnRectangleIcon,
+  ArrowRightStartOnRectangleIcon, ShareIcon, ScaleIcon,
 } from '@heroicons/react/24/outline'
 import useStore from '../store/useStore.js'
 
@@ -14,6 +14,7 @@ const NAV_GROUPS = [
     links: [
       { to: '/dashboard',      label: 'Dashboard',        Icon: HomeIcon },
       { to: '/analytics',      label: 'Analytics',        Icon: PresentationChartLineIcon },
+      { to: '/hierarchy',      label: 'Agent Hierarchy',  Icon: ShareIcon },
     ],
   },
   {
@@ -34,9 +35,10 @@ const NAV_GROUPS = [
   {
     label: 'Post-Sales',
     links: [
-      { to: '/policies',       label: 'Policies',         Icon: CheckBadgeIcon },
-      { to: '/renewals',       label: 'Renewals',         Icon: ArrowPathIcon },
-      { to: '/commissions',    label: 'Commissions',      Icon: BanknotesIcon },
+      { to: '/policies',           label: 'Policies',          Icon: CheckBadgeIcon },
+      { to: '/renewals',           label: 'Renewals',          Icon: ArrowPathIcon },
+      { to: '/commissions',        label: 'Commissions',       Icon: BanknotesIcon },
+      { to: '/commission-ledger',  label: 'Ledger',            Icon: ScaleIcon },
     ],
   },
 ]

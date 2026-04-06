@@ -4,6 +4,7 @@ import sqlite3
 import uuid
 import json
 import hashlib
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, timezone, timedelta
 
 from database import DB_PATH, init_db
@@ -20,6 +21,84 @@ def days_from_now(n: int) -> str:
 
 def _hash(pw: str) -> str:
     return hashlib.sha256(pw.encode()).hexdigest()
+
+
+def backfill_ledger(conn) -> None:
+    """Create commission_ledger entries from existing commissions rows.
+
+    For each existing commission row (BASE), also walks the agent_hierarchy BFS
+    to generate OVERRIDE rows for uplines.
+    """
+    conn.row_factory = sqlite3.Row
+    today = datetime.now(timezone.utc).isoformat()[:10]
+
+    rows = conn.execute(
+        "SELECT commission_id, policy_id, product_id, agent_id, premium, rate_percent, recorded_at "
+        "FROM commissions"
+    ).fetchall()
+
+    for row in rows:
+        policy_id = row["policy_id"]
+        writing_agent_id = row["agent_id"]
+        product_id = row["product_id"]
+        premium_d = Decimal(str(row["premium"]))
+        rate = row["rate_percent"]
+        created_at = row["recorded_at"]
+
+        if not writing_agent_id:
+            continue
+
+        # BASE entry
+        base_amount = (premium_d * Decimal(str(rate)) / 100).quantize(
+            Decimal("0.0001"), ROUND_HALF_UP
+        )
+        conn.execute("""
+            INSERT OR IGNORE INTO commission_ledger
+            (ledger_id, policy_id, agent_id, source_agent_id, earning_type,
+             hierarchy_level, percentage, amount, visibility_scope, created_at)
+            VALUES (?,?,?,?,'BASE',0,?,?,'SELF',?)
+        """, (str(uuid.uuid4()), policy_id, writing_agent_id, writing_agent_id,
+              float(rate), float(base_amount), created_at))
+
+        # BFS upward
+        visited = {writing_agent_id}
+        frontier = [(writing_agent_id, 0)]
+        while frontier:
+            current, depth = frontier.pop(0)
+            if depth >= 5:
+                continue
+            upline_rows = conn.execute(
+                "SELECT upline_agent_id, override_percentage FROM agent_hierarchy "
+                "WHERE downline_agent_id=? AND is_active=1",
+                [current],
+            ).fetchall()
+            for ur in upline_rows:
+                upline = ur["upline_agent_id"]
+                if upline in visited:
+                    continue
+                visited.add(upline)
+
+                # Check commission_rules for product+level override
+                rule = conn.execute(
+                    """SELECT override_percentage FROM commission_rules
+                       WHERE product_id=? AND hierarchy_level=?
+                         AND effective_from <= ? AND (effective_to IS NULL OR effective_to >= ?)
+                       ORDER BY effective_from DESC LIMIT 1""",
+                    (product_id, depth + 1, today, today),
+                ).fetchone()
+                pct = rule["override_percentage"] if rule else ur["override_percentage"]
+
+                amount = (premium_d * Decimal(str(pct)) / 100).quantize(
+                    Decimal("0.0001"), ROUND_HALF_UP
+                )
+                conn.execute("""
+                    INSERT OR IGNORE INTO commission_ledger
+                    (ledger_id, policy_id, agent_id, source_agent_id, earning_type,
+                     hierarchy_level, percentage, amount, visibility_scope, created_at)
+                    VALUES (?,?,?,?,'OVERRIDE',?,?,?,'DOWNLINE',?)
+                """, (str(uuid.uuid4()), policy_id, upline, writing_agent_id,
+                      depth + 1, float(pct), float(amount), created_at))
+                frontier.append((upline, depth + 1))
 
 
 def seed() -> None:
@@ -62,6 +141,45 @@ def seed() -> None:
             "is_active": 1,
             "created_at": days_ago(90),
             "updated_at": days_ago(5),
+        },
+        {
+            "agent_id": "agent-003",
+            "name": "Rachel Chen",
+            "email": "rachel.chen@insuredesk.com",
+            "password_hash": _hash("agent123"),
+            "role": "agent",
+            "npn": "11223344",
+            "license_states": "CA,NY,WA",
+            "phone": "(206) 555-0003",
+            "is_active": 1,
+            "created_at": days_ago(120),
+            "updated_at": days_ago(7),
+        },
+        {
+            "agent_id": "agent-004",
+            "name": "Marcus Webb",
+            "email": "marcus.webb@insuredesk.com",
+            "password_hash": _hash("agent123"),
+            "role": "agent",
+            "npn": "55667788",
+            "license_states": "CA,TX",
+            "phone": "(213) 555-0004",
+            "is_active": 1,
+            "created_at": days_ago(60),
+            "updated_at": days_ago(4),
+        },
+        {
+            "agent_id": "agent-005",
+            "name": "Sofia Park",
+            "email": "sofia.park@insuredesk.com",
+            "password_hash": _hash("agent123"),
+            "role": "agent",
+            "npn": "99001122",
+            "license_states": "CA,FL,NY",
+            "phone": "(305) 555-0005",
+            "is_active": 1,
+            "created_at": days_ago(45),
+            "updated_at": days_ago(2),
         },
     ]
 
@@ -389,10 +507,54 @@ def seed() -> None:
             :activity_type, :description, :metadata, :timestamp)
     """, activities)
 
+    # ── AGENT HIERARCHY ──────────────────────────────────────────────────────
+    # Edges: downline → upline direction
+    # agent-001 (Alex/MGA) ← agent-002 (Jordan), 5% override
+    # agent-001 (Alex/MGA) ← agent-003 (Rachel), 5% override
+    # agent-003 (Rachel)   ← agent-004 (Marcus), 3% override
+    # agent-003 (Rachel)   ← agent-005 (Sofia),  3% override
+    hierarchy_edges = [
+        {"upline_agent_id": "agent-001", "downline_agent_id": "agent-002",
+         "override_percentage": 5.0, "hierarchy_level": 1, "is_active": 1, "created_at": days_ago(80)},
+        {"upline_agent_id": "agent-001", "downline_agent_id": "agent-003",
+         "override_percentage": 5.0, "hierarchy_level": 1, "is_active": 1, "created_at": days_ago(110)},
+        {"upline_agent_id": "agent-003", "downline_agent_id": "agent-004",
+         "override_percentage": 3.0, "hierarchy_level": 1, "is_active": 1, "created_at": days_ago(55)},
+        {"upline_agent_id": "agent-003", "downline_agent_id": "agent-005",
+         "override_percentage": 3.0, "hierarchy_level": 1, "is_active": 1, "created_at": days_ago(40)},
+    ]
+    conn.executemany("""
+        INSERT INTO agent_hierarchy (upline_agent_id, downline_agent_id, override_percentage,
+            hierarchy_level, is_active, created_at)
+        VALUES (:upline_agent_id, :downline_agent_id, :override_percentage,
+            :hierarchy_level, :is_active, :created_at)
+    """, hierarchy_edges)
+
+    # ── COMMISSION RULES ─────────────────────────────────────────────────────
+    # Product-specific overrides for prod-003 (Whole Life Advantage)
+    commission_rules = [
+        {"rule_id": str(uuid.uuid4()), "product_id": "prod-003", "agent_role": None,
+         "hierarchy_level": 1, "override_percentage": 4.0,
+         "effective_from": days_ago(180)[:10], "effective_to": None},
+        {"rule_id": str(uuid.uuid4()), "product_id": "prod-003", "agent_role": None,
+         "hierarchy_level": 2, "override_percentage": 2.5,
+         "effective_from": days_ago(180)[:10], "effective_to": None},
+    ]
+    conn.executemany("""
+        INSERT INTO commission_rules (rule_id, product_id, agent_role, hierarchy_level,
+            override_percentage, effective_from, effective_to)
+        VALUES (:rule_id, :product_id, :agent_role, :hierarchy_level,
+            :override_percentage, :effective_from, :effective_to)
+    """, commission_rules)
+
+    # ── LEDGER BACKFILL ──────────────────────────────────────────────────────
+    backfill_ledger(conn)
+
     conn.commit()
     conn.close()
-    print(f"Seed complete: 2 agents, 10 clients, 5 products, {len(policies)} policies, "
-          f"{len(commissions)} commissions, {len(tasks)} tasks, {len(activities)} activities.")
+    print(f"Seed complete: 5 agents, 10 clients, 5 products, {len(policies)} policies, "
+          f"{len(commissions)} commissions, {len(tasks)} tasks, {len(activities)} activities, "
+          f"{len(hierarchy_edges)} hierarchy edges.")
 
 
 if __name__ == "__main__":

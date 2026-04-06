@@ -184,6 +184,47 @@ def init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_tasks_due          ON tasks(due_date);
         CREATE INDEX IF NOT EXISTS idx_audit_table        ON audit_log(table_name, record_id);
         CREATE INDEX IF NOT EXISTS idx_clients_agent      ON clients(agent_id);
+
+        CREATE TABLE IF NOT EXISTS agent_hierarchy (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            upline_agent_id     TEXT    NOT NULL REFERENCES agents(agent_id),
+            downline_agent_id   TEXT    NOT NULL REFERENCES agents(agent_id),
+            override_percentage REAL    NOT NULL DEFAULT 0.0,
+            hierarchy_level     INTEGER NOT NULL DEFAULT 1,
+            is_active           INTEGER NOT NULL DEFAULT 1,
+            created_at          TEXT    NOT NULL,
+            CHECK (upline_agent_id != downline_agent_id),
+            UNIQUE (upline_agent_id, downline_agent_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_hierarchy_downline ON agent_hierarchy(downline_agent_id);
+        CREATE INDEX IF NOT EXISTS idx_hierarchy_upline   ON agent_hierarchy(upline_agent_id);
+
+        CREATE TABLE IF NOT EXISTS commission_ledger (
+            ledger_id        TEXT PRIMARY KEY,
+            policy_id        TEXT NOT NULL REFERENCES policies(policy_id),
+            agent_id         TEXT NOT NULL REFERENCES agents(agent_id),
+            source_agent_id  TEXT NOT NULL REFERENCES agents(agent_id),
+            earning_type     TEXT NOT NULL DEFAULT 'BASE',
+            hierarchy_level  INTEGER NOT NULL DEFAULT 0,
+            percentage       REAL    NOT NULL,
+            amount           REAL    NOT NULL,
+            visibility_scope TEXT    NOT NULL DEFAULT 'SELF',
+            created_at       TEXT    NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_ledger_policy  ON commission_ledger(policy_id);
+        CREATE INDEX IF NOT EXISTS idx_ledger_agent   ON commission_ledger(agent_id);
+        CREATE INDEX IF NOT EXISTS idx_ledger_source  ON commission_ledger(source_agent_id);
+
+        CREATE TABLE IF NOT EXISTS commission_rules (
+            rule_id             TEXT PRIMARY KEY,
+            product_id          TEXT REFERENCES products(product_id),
+            agent_role          TEXT,
+            hierarchy_level     INTEGER NOT NULL DEFAULT 1,
+            override_percentage REAL    NOT NULL,
+            effective_from      TEXT    NOT NULL,
+            effective_to        TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_rules_product ON commission_rules(product_id, hierarchy_level);
     """)
 
     conn.commit()

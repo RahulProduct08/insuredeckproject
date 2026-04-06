@@ -235,6 +235,56 @@ const useStore = create((set, get) => ({
     finally { set({ analyticsLoading: false }) }
   },
 
+  // ── Hierarchy Graph ───────────────────────────────────────────────────────
+  hierarchyGraph: { nodes: [], edges: [] },
+  hierarchyLoading: false,
+
+  fetchHierarchyGraph: async () => {
+    set({ hierarchyLoading: true })
+    try { set({ hierarchyGraph: await api.getHierarchyGraph() }) }
+    catch (e) { get().pushToast(e.message, 'error') }
+    finally { set({ hierarchyLoading: false }) }
+  },
+
+  createHierarchyLink: async (body) => {
+    try {
+      await api.createHierarchyLink(body)
+      get().pushToast('Hierarchy link created', 'success')
+      await get().fetchHierarchyGraph()
+    } catch (e) { get().pushToast(e.message, 'error'); throw e }
+  },
+
+  deleteHierarchyLink: async (id) => {
+    try {
+      await api.deleteHierarchyLink(id)
+      get().pushToast('Link removed', 'success')
+      await get().fetchHierarchyGraph()
+    } catch (e) { get().pushToast(e.message, 'error') }
+  },
+
+  // ── Commission Ledger ─────────────────────────────────────────────────────
+  ledger: [],
+  ledgerSummary: { base_total: 0, override_total: 0, grand_total: 0 },
+  ledgerFlow: [],
+  ledgerLoading: false,
+
+  fetchLedger: async (params) => {
+    set({ ledgerLoading: true })
+    try { set({ ledger: await api.getLedger(params) }) }
+    catch (e) { get().pushToast(e.message, 'error') }
+    finally { set({ ledgerLoading: false }) }
+  },
+
+  fetchLedgerSummary: async () => {
+    try { set({ ledgerSummary: await api.getLedgerSummary() }) }
+    catch (e) { get().pushToast(e.message, 'error') }
+  },
+
+  fetchLedgerFlow: async (policyId) => {
+    try { set({ ledgerFlow: await api.getLedgerFlow(policyId) }) }
+    catch (e) { get().pushToast(e.message, 'error') }
+  },
+
   // ── Toast ─────────────────────────────────────────────────────────────────
   toasts: [],
   pushToast: (msg, type = 'info') =>

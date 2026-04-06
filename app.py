@@ -15,6 +15,7 @@ from routes.agents import agents_bp
 from routes.tasks import tasks_bp
 from routes.analytics import analytics_bp
 from routes.needs_analysis import needs_bp
+from routes.hierarchy import hierarchy_bp
 
 # ── Startup ────────────────────────────────────────────────────────────────
 init_db()
@@ -43,6 +44,7 @@ app.register_blueprint(agents_bp)
 app.register_blueprint(tasks_bp)
 app.register_blueprint(analytics_bp)
 app.register_blueprint(needs_bp)
+app.register_blueprint(hierarchy_bp)
 
 
 @app.route("/api/health")

@@ -19,6 +19,8 @@ import Commissions from './pages/Commissions.jsx'
 import Renewals from './pages/Renewals.jsx'
 import Analytics from './pages/Analytics.jsx'
 import NeedsAnalysis from './pages/NeedsAnalysis.jsx'
+import HierarchyGraph from './pages/HierarchyGraph.jsx'
+import CommissionLedger from './pages/CommissionLedger.jsx'
 import useStore from './store/useStore.js'
 
 const TOAST_CONFIG = {
@@ -76,6 +78,8 @@ function AppLayout() {
           <Route path="/renewals"      element={<Renewals />} />
           <Route path="/analytics"     element={<Analytics />} />
           <Route path="/needs-analysis" element={<NeedsAnalysis />} />
+          <Route path="/hierarchy"          element={<HierarchyGraph />} />
+          <Route path="/commission-ledger"  element={<CommissionLedger />} />
         </Routes>
       </main>
     </div>
