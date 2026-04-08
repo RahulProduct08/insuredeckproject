@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UnderwritingApplication",
+  "description": "Structured application data for underwriting lifecycle",
+  "type": "object",
+  "required": ["application_id", "client_id", "product_id", "state"],
+  "properties": {
+    "application_id": {
+      "type": "string",
+      "description": "Unique identifier for the underwriting application"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "Reference to the client record"
+    },
+    "product_id": {
+      "type": "string",
+      "description": "Reference to the insurance product"
+    },
+    "state": {
+      "type": "string",
+      "enum": ["CREATED", "IN_PROGRESS", "DATA_ENRICHED", "RISK_CLASSIFIED", "DECISIONED", "PENDED", "APPROVED", "REJECTED", "ISSUED"],
+      "description": "Current lifecycle state"
+    },
+    "raw_input": {
+      "type": "object",
+      "description": "Original unstructured input data (forms, notes, documents)",
+      "properties": {
+        "forms": { "type": "object" },
+        "notes": { "type": "string" },
+        "documents": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "structured_data": {
+      "type": "object",
+      "description": "LLM-extracted structured application data",
+      "properties": {
+        "personal_info": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "date_of_birth": { "type": "string", "format": "date" },
+            "age": { "type": "integer", "minimum": 0, "maximum": 120 },
+            "gender": { "type": "string", "enum": ["M", "F", "Other"] },
+            "occupation": { "type": "string" },
+            "smoker": { "type": "boolean" }
+          }
+        },
+        "financial_info": {
+          "type": "object",
+          "properties": {
+            "annual_income": { "type": "number", "minimum": 0 },
+            "net_worth": { "type": "number" },
+            "existing_coverage": { "type": "number", "minimum": 0 }
+          }
+        },
+        "health_info": {
+          "type": "object",
+          "properties": {
+            "bmi": { "type": "number" },
+            "pre_existing_conditions": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "family_history": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "medications": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "coverage_requested": {
+          "type": "object",
+          "properties": {
+            "sum_assured": { "type": "number", "minimum": 0 },
+            "policy_term_years": { "type": "integer", "minimum": 1 },
+            "premium_frequency": {
+              "type": "string",
+              "enum": ["monthly", "quarterly", "semi-annual", "annual"]
+            }
+          }
+        }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

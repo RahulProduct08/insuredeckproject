@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RiskProfile",
+  "description": "Risk classification output from the underwriting risk engine",
+  "type": "object",
+  "required": ["profile_id", "application_id", "risk_score", "risk_class", "risk_flags", "state"],
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "description": "Unique identifier for the risk profile"
+    },
+    "application_id": {
+      "type": "string",
+      "description": "Reference to the underwriting application"
+    },
+    "risk_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Numeric risk score (0 = lowest risk, 100 = highest risk)"
+    },
+    "risk_class": {
+      "type": "string",
+      "enum": ["PREFERRED", "STANDARD", "SUBSTANDARD", "DECLINED"],
+      "description": "Categorical risk classification"
+    },
+    "risk_flags": {
+      "type": "array",
+      "description": "List of specific risk signals identified",
+      "items": {
+        "type": "object",
+        "required": ["flag_code", "severity", "description"],
+        "properties": {
+          "flag_code": {
+            "type": "string",
+            "description": "Unique code identifying the risk flag (e.g., AGE_LIMIT, SMOKER, HIGH_BMI)"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+            "description": "Severity level of the risk flag"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable explanation of the flag"
+          },
+          "value": {
+            "description": "The actual value that triggered the flag"
+          },
+          "threshold": {
+            "description": "The threshold that was exceeded"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "premium_loading_percent": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Additional premium percentage due to risk classification"
+    },
+    "signals": {
+      "type": "object",
+      "description": "Normalized signals used for scoring",
+      "properties": {
+        "age_score": { "type": "number" },
+        "health_score": { "type": "number" },
+        "financial_score": { "type": "number" },
+        "lifestyle_score": { "type": "number" }
+      }
+    },
+    "manual_review_required": {
+      "type": "boolean",
+      "description": "Whether a human underwriter must review this case"
+    },
+    "review_reason": {
+      "type": "string",
+      "description": "Reason for manual review if required"
+    },
+    "state": {
+      "type": "string",
+      "enum": ["RISK_CLASSIFIED"],
+      "description": "State of the risk profile"
+    },
+    "classified_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

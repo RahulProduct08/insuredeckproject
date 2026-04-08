@@ -8,11 +8,18 @@ and routes execution to the appropriate workflow logic, delegating all
 deterministic operations to the tool layer.
 
 Supported Intents:
-    qualify_lead        → pre_sales_pipeline workflow
-    create_policy       → create_policy workflow
-    advance_policy      → policy_lifecycle workflow
-    service_policy      → post_sales_servicing workflow
-    track_commission    → commission_tracking workflow
+    qualify_lead            → pre_sales_pipeline workflow
+    create_policy           → create_policy workflow
+    advance_policy          → policy_lifecycle workflow
+    service_policy          → post_sales_servicing workflow
+    track_commission        → commission_tracking workflow
+
+    -- Underwriting System (WAT Framework v3) --
+    underwrite_application  → full underwriting pipeline (intake → data → risk → decision)
+    assess_risk             → risk_classification only
+    fulfill_requirements    → requirements_management (fulfill pending requirements)
+    issue_policy            → issuance workflow for approved application
+    get_underwriting_status → returns current state + summary of application
 
 Usage:
     from agent.orchestrator import Orchestrator
@@ -127,11 +134,18 @@ class Orchestrator:
                 detail  : longer error context      (on error)
         """
         dispatch: dict[str, Any] = {
+            # Pre-sales & policy lifecycle
             "qualify_lead":     self._qualify_lead,
             "create_policy":    self._create_policy,
             "advance_policy":   self._advance_policy,
             "service_policy":   self._service_policy,
             "track_commission": self._track_commission,
+            # Underwriting system (WAT Framework v3)
+            "underwrite_application":  self._underwrite_application,
+            "assess_risk":             self._assess_risk,
+            "fulfill_requirements":    self._fulfill_requirements,
+            "issue_policy_uw":         self._issue_policy_uw,
+            "get_underwriting_status": self._get_underwriting_status,
         }
 
         handler = dispatch.get(intent)
@@ -589,6 +603,180 @@ class Orchestrator:
             "rate_percent": config["rate_percent"],
             "commission_record": commission_record,
             "agent_earnings_summary": earnings,
+        })
+
+
+# ---------------------------------------------------------------------------
+# Underwriting Workflows (WAT Framework v3)
+# ---------------------------------------------------------------------------
+
+    def _underwrite_application(
+        self,
+        application_id: str,
+        raw_input: dict[str, Any] | None = None,
+        external_data: dict[str, Any] | None = None,
+        decided_by: str = "SYSTEM",
+        **_: Any,
+    ) -> dict[str, Any]:
+        """
+        Run the full underwriting pipeline for an application:
+          intake_application → data_aggregation → risk_classification → underwriting_decision
+
+        SOP references: intake_application.md, data_aggregation.md,
+                        risk_classification.md, underwriting_decision.md
+        """
+        from engine.workflow_runner import WorkflowRunner
+        runner = WorkflowRunner()
+
+        # Step 1 — Intake
+        result = runner.run("intake_application", application_id, raw_input=raw_input or {})
+        if result["status"] == "error":
+            return _err("underwrite_application", result["error"])
+
+        # Step 2 — Data aggregation
+        result = runner.run("data_aggregation", application_id, external_data=external_data or {})
+        if result["status"] == "error":
+            return _err("underwrite_application", result["error"])
+
+        # If pended at data aggregation, stop here
+        if result["data"].get("status") == "PENDED":
+            return _ok("underwrite_application", {
+                "application_id": application_id,
+                "state": "PENDED",
+                "reason": "Insufficient data for underwriting — requirements pending",
+            })
+
+        # Step 3 — Risk classification
+        result = runner.run("risk_classification", application_id)
+        if result["status"] == "error":
+            return _err("underwrite_application", result["error"])
+
+        risk_data = result["data"]
+
+        # Step 4 — Decision
+        result = runner.run("underwriting_decision", application_id, decided_by=decided_by)
+        if result["status"] == "error":
+            return _err("underwrite_application", result["error"])
+
+        decision_data = result["data"]
+
+        return _ok("underwrite_application", {
+            "application_id": application_id,
+            "decision": decision_data.get("decision"),
+            "decision_id": decision_data.get("decision_id"),
+            "risk_score": risk_data.get("risk_score"),
+            "risk_class": risk_data.get("risk_class"),
+            "premium_adjustment": decision_data.get("premium_adjustment"),
+            "conditions": decision_data.get("conditions"),
+            "audit_summary": decision_data.get("audit_summary"),
+        })
+
+    def _assess_risk(
+        self,
+        application_id: str,
+        **_: Any,
+    ) -> dict[str, Any]:
+        """
+        Run risk_classification only on an already DATA_ENRICHED application.
+        SOP: risk_classification.md
+        """
+        from engine.workflow_runner import WorkflowRunner
+        runner = WorkflowRunner()
+        result = runner.run("risk_classification", application_id)
+        if result["status"] == "error":
+            return _err("assess_risk", result["error"])
+        return _ok("assess_risk", result["data"])
+
+    def _fulfill_requirements(
+        self,
+        application_id: str,
+        fulfilled_data: dict[str, Any] | None = None,
+        **_: Any,
+    ) -> dict[str, Any]:
+        """
+        Process fulfilled requirements and re-trigger underwriting flow.
+        SOP: requirements_management.md
+        """
+        from engine.workflow_runner import WorkflowRunner
+        runner = WorkflowRunner()
+        result = runner.run(
+            "requirements_management",
+            application_id,
+            fulfilled_data=fulfilled_data,
+        )
+        if result["status"] == "error":
+            return _err("fulfill_requirements", result["error"])
+        return _ok("fulfill_requirements", result["data"])
+
+    def _issue_policy_uw(
+        self,
+        application_id: str,
+        **_: Any,
+    ) -> dict[str, Any]:
+        """
+        Issue policy for an approved underwriting application.
+        SOP: issuance.md
+        """
+        from engine.workflow_runner import WorkflowRunner
+        runner = WorkflowRunner()
+        result = runner.run("issuance", application_id)
+        if result["status"] == "error":
+            return _err("issue_policy_uw", result["error"])
+        return _ok("issue_policy_uw", result["data"])
+
+    def _get_underwriting_status(
+        self,
+        application_id: str,
+        **_: Any,
+    ) -> dict[str, Any]:
+        """
+        Return current state + summary of an underwriting application.
+        """
+        from state.state_manager import get_state_manager
+        from database import get_db, row_to_dict
+
+        state_mgr = get_state_manager()
+        current_state = state_mgr.get_state(application_id)
+
+        if current_state is None:
+            return _err("get_underwriting_status", f"Application '{application_id}' not found.")
+
+        conn = get_db()
+        try:
+            app_row = conn.execute(
+                "SELECT * FROM underwriting_applications WHERE application_id = ?",
+                (application_id,)
+            ).fetchone()
+            risk_row = conn.execute(
+                "SELECT risk_score, risk_class, manual_review_required FROM risk_profiles "
+                "WHERE application_id = ? ORDER BY classified_at DESC LIMIT 1",
+                (application_id,)
+            ).fetchone()
+            dec_row = conn.execute(
+                "SELECT decision, decided_at FROM underwriting_decisions "
+                "WHERE application_id = ? ORDER BY decided_at DESC LIMIT 1",
+                (application_id,)
+            ).fetchone()
+            req_count = conn.execute(
+                "SELECT COUNT(*) FROM application_requirements "
+                "WHERE application_id = ? AND status = 'PENDING'",
+                (application_id,)
+            ).fetchone()[0]
+        finally:
+            conn.close()
+
+        return _ok("get_underwriting_status", {
+            "application_id": application_id,
+            "state": current_state,
+            "allowed_transitions": state_mgr.get_allowed_transitions(application_id),
+            "is_terminal": state_mgr.is_terminal(application_id),
+            "risk_score": risk_row["risk_score"] if risk_row else None,
+            "risk_class": risk_row["risk_class"] if risk_row else None,
+            "manual_review_required": bool(risk_row["manual_review_required"]) if risk_row else None,
+            "decision": dec_row["decision"] if dec_row else None,
+            "decided_at": dec_row["decided_at"] if dec_row else None,
+            "pending_requirements_count": req_count,
+            "created_at": row_to_dict(app_row).get("created_at") if app_row else None,
         })
 
 

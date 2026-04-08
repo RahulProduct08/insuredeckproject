@@ -9,7 +9,10 @@ import json
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "insurance_portal.db")
 
 _JSON_COLUMNS = {"documents_checklist", "documents_attached", "metadata",
-                 "eligibility_rules", "recommended_products", "answers"}
+                 "eligibility_rules", "recommended_products", "answers",
+                 "raw_input", "structured_data", "risk_flags", "signals",
+                 "premium_adjustment", "conditions", "rejection_reasons",
+                 "pend_reasons", "audit_trail", "input", "output"}
 
 
 def get_db() -> sqlite3.Connection:
@@ -225,6 +228,81 @@ def init_db() -> None:
             effective_to        TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_rules_product ON commission_rules(product_id, hierarchy_level);
+
+        -- ── Underwriting System (WAT Framework v3) ────────────────────────────────
+
+        CREATE TABLE IF NOT EXISTS underwriting_applications (
+            application_id  TEXT PRIMARY KEY,
+            client_id       TEXT NOT NULL REFERENCES clients(client_id),
+            product_id      TEXT NOT NULL REFERENCES products(product_id),
+            policy_id       TEXT REFERENCES policies(policy_id),
+            state           TEXT NOT NULL DEFAULT 'CREATED',
+            raw_input       TEXT NOT NULL DEFAULT '{}',
+            structured_data TEXT NOT NULL DEFAULT '{}',
+            created_at      TEXT NOT NULL,
+            updated_at      TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_uw_app_client ON underwriting_applications(client_id);
+        CREATE INDEX IF NOT EXISTS idx_uw_app_state  ON underwriting_applications(state);
+
+        CREATE TABLE IF NOT EXISTS risk_profiles (
+            profile_id              TEXT PRIMARY KEY,
+            application_id          TEXT NOT NULL REFERENCES underwriting_applications(application_id),
+            risk_score              REAL NOT NULL DEFAULT 0,
+            risk_class              TEXT NOT NULL DEFAULT 'STANDARD',
+            risk_flags              TEXT NOT NULL DEFAULT '[]',
+            premium_loading_percent REAL NOT NULL DEFAULT 0,
+            signals                 TEXT NOT NULL DEFAULT '{}',
+            manual_review_required  INTEGER NOT NULL DEFAULT 0,
+            review_reason           TEXT,
+            state                   TEXT NOT NULL DEFAULT 'RISK_CLASSIFIED',
+            classified_at           TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_risk_app ON risk_profiles(application_id);
+
+        CREATE TABLE IF NOT EXISTS underwriting_decisions (
+            decision_id        TEXT PRIMARY KEY,
+            application_id     TEXT NOT NULL REFERENCES underwriting_applications(application_id),
+            decision           TEXT NOT NULL,
+            premium_adjustment TEXT NOT NULL DEFAULT '{}',
+            conditions         TEXT NOT NULL DEFAULT '[]',
+            rejection_reasons  TEXT NOT NULL DEFAULT '[]',
+            pend_reasons       TEXT NOT NULL DEFAULT '[]',
+            audit_trail        TEXT NOT NULL DEFAULT '{}',
+            state              TEXT NOT NULL DEFAULT 'DECISIONED',
+            decided_by         TEXT NOT NULL DEFAULT 'SYSTEM',
+            decided_at         TEXT NOT NULL,
+            escalated_to       TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_decision_app ON underwriting_decisions(application_id);
+
+        CREATE TABLE IF NOT EXISTS underwriting_audit_logs (
+            log_id            TEXT PRIMARY KEY,
+            application_id    TEXT NOT NULL REFERENCES underwriting_applications(application_id),
+            input             TEXT NOT NULL DEFAULT '{}',
+            tool_called       TEXT NOT NULL,
+            prompt_version    TEXT,
+            output            TEXT NOT NULL DEFAULT '{}',
+            validation_status TEXT NOT NULL DEFAULT 'PENDING',
+            timestamp         TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_audit_log_app ON underwriting_audit_logs(application_id);
+        CREATE INDEX IF NOT EXISTS idx_audit_log_ts  ON underwriting_audit_logs(timestamp);
+
+        CREATE TABLE IF NOT EXISTS application_requirements (
+            requirement_id  TEXT PRIMARY KEY,
+            application_id  TEXT NOT NULL REFERENCES underwriting_applications(application_id),
+            field_name      TEXT NOT NULL,
+            description     TEXT NOT NULL,
+            priority        TEXT NOT NULL DEFAULT 'REQUIRED',
+            document_type   TEXT,
+            reason          TEXT,
+            status          TEXT NOT NULL DEFAULT 'PENDING',
+            created_at      TEXT NOT NULL,
+            fulfilled_at    TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_req_app    ON application_requirements(application_id);
+        CREATE INDEX IF NOT EXISTS idx_req_status ON application_requirements(status);
     """)
 
     conn.commit()

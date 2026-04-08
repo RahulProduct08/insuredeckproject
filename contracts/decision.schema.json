@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UnderwritingDecision",
+  "description": "Final underwriting decision with reasoning and audit trail",
+  "type": "object",
+  "required": ["decision_id", "application_id", "decision", "state", "decided_at"],
+  "properties": {
+    "decision_id": {
+      "type": "string",
+      "description": "Unique identifier for the decision record"
+    },
+    "application_id": {
+      "type": "string",
+      "description": "Reference to the underwriting application"
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["APPROVED", "APPROVED_WITH_CONDITIONS", "REJECTED", "PENDED"],
+      "description": "The final underwriting decision"
+    },
+    "premium_adjustment": {
+      "type": "object",
+      "description": "Any adjustments to the standard premium",
+      "properties": {
+        "base_premium": { "type": "number", "minimum": 0 },
+        "loading_percent": { "type": "number", "minimum": 0 },
+        "final_premium": { "type": "number", "minimum": 0 },
+        "adjustment_reason": { "type": "string" }
+      }
+    },
+    "conditions": {
+      "type": "array",
+      "description": "Conditions attached to approval (for APPROVED_WITH_CONDITIONS)",
+      "items": {
+        "type": "object",
+        "required": ["condition_code", "description"],
+        "properties": {
+          "condition_code": { "type": "string" },
+          "description": { "type": "string" },
+          "exclusion_clause": { "type": "string" }
+        }
+      }
+    },
+    "rejection_reasons": {
+      "type": "array",
+      "description": "Reasons for rejection (for REJECTED)",
+      "items": {
+        "type": "object",
+        "required": ["reason_code", "description"],
+        "properties": {
+          "reason_code": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "pend_reasons": {
+      "type": "array",
+      "description": "Outstanding requirements causing pending (for PENDED)",
+      "items": { "type": "string" }
+    },
+    "audit_trail": {
+      "type": "object",
+      "description": "LLM-generated explainable reasoning for the decision",
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "Plain-language summary of the decision rationale"
+        },
+        "risk_factors_considered": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "rules_applied": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "prompt_version": { "type": "string" },
+        "generated_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "state": {
+      "type": "string",
+      "enum": ["DECISIONED", "APPROVED", "REJECTED", "PENDED"],
+      "description": "State of the decision"
+    },
+    "decided_by": {
+      "type": "string",
+      "description": "Agent ID or 'SYSTEM' for automated decisions"
+    },
+    "decided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "escalated_to": {
+      "type": "string",
+      "description": "Underwriter agent ID if escalated for manual review"
+    }
+  },
+  "additionalProperties": false
+}

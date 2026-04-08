@@ -1,0 +1,922 @@
+================================================================================
+                     INSUREDESK — AGENT PORTAL
+                  Complete Project Documentation
+                     Built with Claude Code AI
+================================================================================
+
+  A production-grade US insurance agent CRM & commission management portal
+  covering the full policy lifecycle from lead capture to multi-level override
+  commission distribution.
+
+================================================================================
+  TABLE OF CONTENTS
+================================================================================
+
+  1.  Project Overview
+  2.  Technology Stack
+  3.  Architecture Overview
+  4.  Backend Services & APIs
+  5.  Frontend Pages & Features
+  6.  Database Schema
+  7.  Authentication & Security
+  8.  Commission Engine
+  9.  Agent Hierarchy System
+  10. Seed Data & Demo Environment
+  11. Deployment
+  12. File Structure
+  13. Key Design Decisions
+  14. Feature Timeline (What Was Built in Each Phase)
+
+================================================================================
+  1. PROJECT OVERVIEW
+================================================================================
+
+  InsureDesk is a full-stack insurance agent portal designed for the US market.
+  It enables individual agents, managers, and MGAs (Managing General Agents) to
+  manage their entire book of business from a single interface.
+
+  Core capabilities:
+  - Lead & client pipeline management (Lead → Qualified → Proposal → Closed)
+  - Policy lifecycle management (Draft → Submitted → Underwriting → Issued)
+  - Multi-level commission tracking with immutable ledger
+  - Agent hierarchy graph (MGA → Manager → Agent)
+  - Task management with overdue alerts
+  - Needs analysis worksheets
+  - Analytics dashboard with production metrics
+  - Renewal forecasting and monitoring
+  - Role-based access control (Admin vs Agent)
+
+  Target users:
+  - Solo insurance agents
+  - Agency managers / team leads
+  - MGAs (Managing General Agents) overseeing multiple downline agents
+
+================================================================================
+  2. TECHNOLOGY STACK
+================================================================================
+
+  BACKEND
+  -------
+  Language        : Python 3.x
+  Framework       : Flask 3.x
+  Database        : SQLite 3 (WAL mode, foreign keys enforced)
+  Auth            : PyJWT (JSON Web Tokens, HS256)
+  Password hashing: hashlib SHA-256
+  Precision math  : Python decimal.Decimal (ROUND_HALF_UP) for commissions
+  CORS            : flask-cors
+  Hosting         : Render.com (free tier, auto-deploy from GitHub)
+
+  FRONTEND
+  --------
+  Language        : JavaScript (ES Modules)
+  Framework       : React 18
+  Build tool      : Vite 5
+  State management: Zustand 4
+  Styling         : Tailwind CSS 3 (JIT mode)
+  Icons           : Heroicons v2 (24/outline + 20/solid)
+  Routing         : react-router-dom v6
+  Graph UI        : @xyflow/react v12 (React Flow) — hierarchy canvas
+  HTTP client     : Native fetch API (custom wrapper in api.js)
+
+  TOOLING
+  -------
+  Version control : Git + GitHub
+  AI pair programmer: Claude Code (Anthropic)
+  Package manager : npm (frontend), pip (backend)
+  Local dev server: Flask dev server (port 5000) + Vite (port 5173, proxy to 5000)
+
+================================================================================
+  3. ARCHITECTURE OVERVIEW
+================================================================================
+
+  ┌─────────────────────────────────────────────────────────┐
+  │                      CLIENT (Browser)                    │
+  │   React 18 + Vite + Zustand + Tailwind + React Flow      │
+  │   Single Page Application served from /frontend/dist/   │
+  └─────────────────────┬───────────────────────────────────┘
+                         │  HTTPS (fetch API, Bearer JWT)
+                         │  BASE = '/api'
+  ┌─────────────────────▼───────────────────────────────────┐
+  │                   FLASK APPLICATION                      │
+  │                    app.py (entry point)                  │
+  │                                                          │
+  │   Blueprints:                                            │
+  │   /api/auth          — login, register, me               │
+  │   /api/agents        — agent CRUD + profiles             │
+  │   /api/clients       — client CRUD + search              │
+  │   /api/products      — insurance product catalog         │
+  │   /api/policies      — policy lifecycle + FSM            │
+  │   /api/commissions   — commission records + summary      │
+  │   /api/activities    — activity log per client           │
+  │   /api/tasks         — task management                   │
+  │   /api/analytics     — production metrics & forecasts    │
+  │   /api/needs-analysis— needs assessment worksheets       │
+  │   /api/hierarchy     — agent graph + commission ledger   │
+  └─────────────────────┬───────────────────────────────────┘
+                         │  sqlite3 (Python stdlib)
+  ┌─────────────────────▼───────────────────────────────────┐
+  │              SQLite DATABASE (insurance_portal.db)       │
+  │              WAL mode · Foreign keys ON · Row factory    │
+  │   16 tables — agents, clients, products, policies,       │
+  │   commissions, commission_ledger, agent_hierarchy,       │
+  │   commission_rules, activities, tasks, audit_log,        │
+  │   policy_status_history, needs_analyses, and more        │
+  └─────────────────────────────────────────────────────────┘
+
+  Deployment flow:
+  GitHub push → Render auto-detects → pip install → python app.py
+  Flask serves both /api/* (backend) and /* (React SPA from dist/)
+
+================================================================================
+  4. BACKEND SERVICES & APIs
+================================================================================
+
+  All endpoints are prefixed with /api. JWT Bearer token required on all
+  routes except /api/auth/login and /api/auth/register.
+
+  ── AUTH (/api/auth) ──────────────────────────────────────────────────────
+
+  POST   /api/auth/register   Register a new agent account
+                               Body: { name, email, password, role? }
+                               Returns: { token, agent }
+
+  POST   /api/auth/login       Authenticate and receive JWT
+                               Body: { email, password }
+                               Returns: { token, agent }
+
+  GET    /api/auth/me          Return current agent profile from token
+
+  ── AGENTS (/api/agents) ──────────────────────────────────────────────────
+
+  GET    /api/agents           List all active agents (passwords stripped)
+  GET    /api/agents/:id       Get one agent's profile
+  PATCH  /api/agents/:id       Update name, phone, NPN, license_states
+
+  ── CLIENTS (/api/clients) ────────────────────────────────────────────────
+
+  GET    /api/clients          List clients (filterable: stage, agent_id,
+                               lead_score_min, search, limit, offset)
+  GET    /api/clients/:id      Get full client profile
+  POST   /api/clients          Create new client/lead
+  PUT    /api/clients/:id      Update client profile
+  GET    /api/clients/:id/policies    All policies for a client
+  GET    /api/clients/:id/activities  Activity timeline for a client
+
+  ── PRODUCTS (/api/products) ──────────────────────────────────────────────
+
+  GET    /api/products         List all insurance products (filterable)
+  GET    /api/products/:id     Get product detail with eligibility rules
+  POST   /api/products         Create new product (admin)
+  PUT    /api/products/:id     Update product
+
+  ── POLICIES (/api/policies) ──────────────────────────────────────────────
+
+  GET    /api/policies         List policies (filterable: status, client_id,
+                               agent_id, renewal_window in days)
+  GET    /api/policies/:id     Get policy + status history
+  POST   /api/policies         Create policy (runs eligibility validation:
+                               age, income, premium min/max checks)
+  PUT    /api/policies/:id     Update premium or documents
+  POST   /api/policies/:id/transition  Advance FSM state:
+                               Draft→Submitted→Underwriting→Approved→Issued
+                               On "Issued": creates commission rows in both
+                               commissions table AND commission_ledger via
+                               BFS upward traversal of agent_hierarchy
+
+  Policy FSM (Finite State Machine):
+  Draft ──► Submitted ──► Underwriting ──► Approved ──► Issued ──► Lapsed
+                    └──────────────────────────────► Rejected
+
+  ── COMMISSIONS (/api/commissions) ────────────────────────────────────────
+
+  GET    /api/commissions        List commissions (filterable: agent_id,
+                                 event_type, date range)
+  GET    /api/commissions/summary  Aggregate totals: total, sale, renewal,
+                                   count — for current agent or all (admin)
+  GET    /api/commissions/forecast Projected future commissions from:
+                                   • Pending applications (probability-weighted
+                                     by pipeline stage)
+                                   • Upcoming renewals within 90 days
+
+  ── ACTIVITIES (/api/activities) ──────────────────────────────────────────
+
+  GET    /api/activities         List all activities (filterable: client_id,
+                                 activity_type, agent_id)
+  POST   /api/activities         Log a new activity (call, note, meeting,
+                                 follow_up, status_change, etc.)
+
+  ── TASKS (/api/tasks) ────────────────────────────────────────────────────
+
+  GET    /api/tasks              List tasks (filterable: agent_id, status,
+                                 priority, due_before, due_after)
+  POST   /api/tasks              Create task with client/policy linkage
+  PATCH  /api/tasks/:id          Update task (status, priority, due_date, etc.)
+  DELETE /api/tasks/:id          Delete a task
+
+  ── ANALYTICS (/api/analytics) ────────────────────────────────────────────
+
+  GET    /api/analytics/summary  Full production metrics:
+                                 • Policies issued MTD/YTD + prior period
+                                 • Premium written + commissions earned
+                                 • Pipeline conversion rates by stage
+                                 • Avg days in each stage
+                                 • Activity metrics (calls, meetings, notes)
+                                 • Top clients by premium
+                                 • Renewal forecast (30/60/90 days)
+                                 • Commission trend (last 12 months)
+
+  ── NEEDS ANALYSIS (/api/needs-analysis) ──────────────────────────────────
+
+  GET    /api/needs-analysis/client/:id  All worksheets for a client
+  POST   /api/needs-analysis             Create new needs analysis:
+                                         • Coverage gaps, goals, risk score
+                                         • Auto-computes recommended products
+                                         • Logs as activity
+
+  ── HIERARCHY + LEDGER (/api/hierarchy) ───────────────────────────────────
+
+  GET    /api/hierarchy/graph             All agents as nodes + all active
+                                          hierarchy edges. Earnings included
+                                          only for visible agents (visibility-
+                                          enforced at SQL level, not UI).
+
+  GET    /api/hierarchy/agent/:id         One agent's direct uplines + downlines
+
+  POST   /api/hierarchy/link              Create a hierarchy relationship
+                                          (admin only). Cycle detection via
+                                          recursive CTE before insert.
+         Body: { upline_agent_id, downline_agent_id, override_percentage }
+
+  DELETE /api/hierarchy/link/:id          Soft-delete (is_active=0) a link
+                                          (admin only)
+
+  GET    /api/hierarchy/commissions       Ledger rows (visibility-filtered):
+                                          agent sees own rows only; upline
+                                          sees own + all downline rows; admin
+                                          sees everything.
+
+  GET    /api/hierarchy/commissions/flow/:policy_id
+                                          Ordered commission flow for one
+                                          policy: BASE entry (writing agent)
+                                          + all OVERRIDE entries (uplines).
+                                          Amount field ABSENT from payload for
+                                          rows the caller cannot see — never
+                                          masked, simply not sent.
+
+  GET    /api/hierarchy/commissions/summary
+                                          Role-aware KPI totals:
+                                          { base_total, override_total, grand_total }
+
+================================================================================
+  5. FRONTEND PAGES & FEATURES
+================================================================================
+
+  ── LOGIN (/login) ────────────────────────────────────────────────────────
+  • Email + password form
+  • JWT stored in localStorage (insuredesk_token + insuredesk_agent)
+  • Redirect to /dashboard on success
+  • AuthGuard component: all routes redirect to /login if no token
+
+  ── DASHBOARD (/dashboard) ────────────────────────────────────────────────
+  • Today's tasks with overdue highlight (red badges)
+  • Quick-complete tasks inline
+  • Pipeline snapshot (counts by stage)
+  • Recent activity feed
+  • Renewal alerts (policies due within 30 days)
+  • Overdue task count badge in sidebar nav
+
+  ── LEADS / CLIENTS (/clients) ────────────────────────────────────────────
+  • DataTable: Name (avatar), Lead Score (color-coded badge), Stage, Source, Income, Age
+  • Lead score colors: green ≥70, amber ≥50, slate <50
+  • Inline search by name/phone/email
+  • Click row → Detail Panel slides in (edit fields inline)
+  • "Open Client 360 →" link to full client detail page
+  • Create New Client modal (name, phone, email, age, income, lead source)
+  • Lead sources: Referral, Online Ad, Cold Call, Event, Website,
+                  Social Media, Existing Client, Other
+
+  ── CLIENT 360 (/clients/:id) ─────────────────────────────────────────────
+  • Full client profile with all fields
+  • Policy list for that client
+  • Activity timeline (chronological log)
+  • Needs analysis section
+  • All data in one scrollable view
+
+  ── PIPELINE (/pipeline) ──────────────────────────────────────────────────
+  • Kanban-style board: columns per pipeline stage
+  • Lead score visible on each card
+  • Drag-friendly (click to move between stages)
+  • Filter by agent (admin can see all)
+
+  ── PRODUCTS (/products) ──────────────────────────────────────────────────
+  • Product catalog: Term Life Plus, Health Shield PPO, Whole Life Advantage,
+                     Auto Comprehensive, Critical Illness Guard
+  • Eligibility rules: min/max age, min income, premium range
+  • Commission rate per product
+  • Edit product details inline
+
+  ── NEEDS ANALYSIS (/needs-analysis) ──────────────────────────────────────
+  • Client selector
+  • Coverage gaps assessment
+  • Financial goals + dependents analysis
+  • Risk tolerance score (Low/Moderate/High)
+  • Auto-recommended products ranked by suitability
+  • Historical worksheets per client
+
+  ── APPLICATIONS (/applications) ──────────────────────────────────────────
+  • Policies in Draft/Submitted/Underwriting/Approved status
+  • Document checklist per application
+  • Advance status with one-click transitions
+
+  ── POLICIES (/policies) ──────────────────────────────────────────────────
+  • All policies with status badges
+  • Filter by status (multi-select), agent
+  • Full FSM transition controls
+  • Status history timeline on detail panel
+  • Eligibility error messages on create
+
+  ── COMMISSIONS (/commissions) ────────────────────────────────────────────
+  • Summary KPIs: total earned, sale commissions, renewal commissions
+  • Commission forecast panel (pending pipeline + upcoming renewals)
+  • Per-commission table with client, product, premium, rate, amount
+  • Agent filter (admin: see all; agent: own only)
+
+  ── RENEWALS (/renewals) ──────────────────────────────────────────────────
+  • Policies due for renewal in 30/60/90 day windows
+  • Color-coded urgency (red = overdue, amber = <30 days)
+  • Quick-link to client profile
+
+  ── ANALYTICS (/analytics) ────────────────────────────────────────────────
+  • Production summary: issued policies, premium written, commissions (MTD/YTD)
+  • vs. prior period comparisons
+  • Pipeline conversion funnel (% by stage)
+  • Average days per stage
+  • Activity metrics: calls, meetings, notes
+  • Top clients by premium
+  • 12-month commission trend chart
+  • 90-day renewal revenue forecast
+
+  ── AGENT HIERARCHY (/hierarchy) ──────────────────────────────────────────
+  • React Flow canvas — interactive, zoomable, pannable graph
+  • Custom AgentNode: avatar, name, role badge, earnings (or •••• if restricted)
+  • Viewer's own node highlighted with brand ring
+  • Smooth-step edges with "X% override" labels and arrowheads
+  • BFS layout algorithm: hierarchy_level → y position, index → x position
+  • MiniMap + Controls (zoom in/out/fit)
+  • Admin slide-in panel (right side):
+    - Upline agent selector
+    - Downline agent selector
+    - Override % input
+    - POST to /api/hierarchy/link
+    - Graph auto-refreshes on success
+  • Cycle detection: cannot create a link that would form a circular hierarchy
+
+  ── COMMISSION LEDGER (/commission-ledger) ────────────────────────────────
+  • KPI row:
+    - Base Earnings (direct writing commissions)
+    - Override Earnings (upline override commissions)
+    - Grand Total
+  • Policy Flow Visualizer:
+    - Select any Issued policy
+    - Horizontal arrow chain: [Writing Agent $110 BASE] ──► [Manager $33 OVERRIDE]
+    - Amount shows as •••• for rows caller cannot see (server omits field)
+  • Full Ledger DataTable:
+    - Agent, Type (BASE/OVERRIDE badge), Level, %, Amount, Client, Policy, Date
+    - Searchable by agent name, client name, type
+  • Immutable — no edit capability (ledger is append-only by design)
+
+================================================================================
+  6. DATABASE SCHEMA
+================================================================================
+
+  16 tables in SQLite (insurance_portal.db)
+
+  agents
+  ------
+  agent_id        TEXT PK         Unique ID (e.g. "agent-001")
+  name            TEXT            Full name
+  email           TEXT UNIQUE     Login email
+  password_hash   TEXT            SHA-256 hex digest
+  role            TEXT            "admin" | "agent"
+  npn             TEXT            National Producer Number
+  license_states  TEXT            Comma-separated state codes
+  phone           TEXT
+  is_active       INTEGER         1/0
+  created_at      TEXT            ISO timestamp
+  updated_at      TEXT
+
+  clients
+  -------
+  client_id       TEXT PK
+  name, phone, email, age, income, dependents
+  risk_appetite   TEXT            "low" | "moderate" | "high"
+  stage           TEXT            Lead/Qualified/Proposal/Negotiation/Closed
+  lead_source     TEXT            Referral/Online Ad/Cold Call/etc.
+  lead_score      INTEGER         1–100 (computed + stored)
+  agent_id        TEXT FK→agents
+  is_active       INTEGER
+  created_at, updated_at
+
+  products
+  --------
+  product_id      TEXT PK
+  name, description
+  min_premium, max_premium, min_age, max_age, min_income (eligibility gates)
+  commission_rate_percent  REAL   Base commission % for writing agent
+  is_active       INTEGER
+  created_at
+
+  policies
+  --------
+  policy_id       TEXT PK
+  client_id       TEXT FK→clients
+  product_id      TEXT FK→products
+  agent_id        TEXT FK→agents  Writing agent
+  premium         REAL
+  status          TEXT            Draft/Submitted/Underwriting/Approved/Issued/Rejected/Lapsed
+  documents_checklist  TEXT       JSON array
+  documents_attached   TEXT       JSON array
+  issued_at       TEXT
+  renewal_due_at  TEXT
+  created_at, updated_at
+
+  policy_status_history
+  ---------------------
+  id              INTEGER PK AUTOINCREMENT
+  policy_id       TEXT FK→policies
+  from_status     TEXT
+  to_status       TEXT
+  changed_at      TEXT
+
+  commissions (legacy table — untouched)
+  ------------------------------------------
+  commission_id   TEXT PK
+  policy_id, product_id, client_id, agent_id
+  event_type      TEXT            "sale" | "renewal"
+  amount          REAL
+  rate_percent    REAL
+  premium         REAL
+  recorded_at     TEXT
+
+  commission_ledger (NEW — immutable, append-only)
+  -------------------------------------------------
+  ledger_id       TEXT PK         UUID
+  policy_id       TEXT FK→policies
+  agent_id        TEXT FK→agents  Earner
+  source_agent_id TEXT FK→agents  Writing agent (who originated the sale)
+  earning_type    TEXT            "BASE" | "OVERRIDE"
+  hierarchy_level INTEGER         0=writing agent, 1=direct upline, 2=L2 upline
+  percentage      REAL            Commission % that applies
+  amount          REAL            Computed with Decimal, 4 decimal places
+  visibility_scope TEXT           "SELF" | "DOWNLINE" | "ADMIN"
+  created_at      TEXT
+  -- Indexes: policy_id, agent_id, source_agent_id
+
+  agent_hierarchy (NEW — directed graph edge table)
+  --------------------------------------------------
+  id              INTEGER PK AUTOINCREMENT
+  upline_agent_id   TEXT FK→agents
+  downline_agent_id TEXT FK→agents
+  override_percentage  REAL       % of downline's premium that goes to upline
+  hierarchy_level   INTEGER       Direct edge level (1 = immediate)
+  is_active         INTEGER       Soft-delete flag
+  created_at        TEXT
+  UNIQUE (upline_agent_id, downline_agent_id)
+  CHECK (upline_agent_id != downline_agent_id)
+  -- Indexes: downline_agent_id, upline_agent_id
+
+  commission_rules (NEW — product-specific override schedule)
+  -----------------------------------------------------------
+  rule_id         TEXT PK
+  product_id      TEXT FK→products (NULL = applies to all)
+  agent_role      TEXT             NULL = all roles
+  hierarchy_level INTEGER          Which upline level this rule covers
+  override_percentage  REAL        Overrides the agent_hierarchy edge %
+  effective_from  TEXT             Date rule starts
+  effective_to    TEXT             NULL = still active
+
+  activities
+  ----------
+  activity_id     TEXT PK
+  client_id, policy_id, agent_id
+  activity_type   TEXT            call/note/meeting/follow_up/status_change/
+                                  policy_created/commission_recorded/etc.
+  description     TEXT
+  metadata        TEXT            JSON blob for extra context
+  timestamp       TEXT
+
+  tasks
+  -----
+  task_id         TEXT PK
+  client_id, policy_id, agent_id
+  title, description
+  priority        TEXT            "high" | "medium" | "low"
+  status          TEXT            "open" | "completed"
+  due_date        TEXT
+  completed_at    TEXT
+  created_at, updated_at
+
+  audit_log
+  ---------
+  id              INTEGER PK AUTOINCREMENT
+  table_name      TEXT
+  record_id       TEXT
+  field_name      TEXT
+  old_value, new_value  TEXT
+  changed_by      TEXT            agent_id
+  changed_at      TEXT
+
+  needs_analyses
+  --------------
+  analysis_id     TEXT PK
+  client_id       TEXT FK→clients
+  agent_id        TEXT FK→agents
+  coverage_gaps   TEXT            JSON
+  financial_goals TEXT
+  risk_score      INTEGER         1–10
+  dependents_data TEXT            JSON
+  recommended_products  TEXT      JSON array of product IDs
+  notes           TEXT
+  created_at      TEXT
+
+================================================================================
+  7. AUTHENTICATION & SECURITY
+================================================================================
+
+  JWT (JSON Web Token):
+  - Algorithm: HS256 (HMAC-SHA256)
+  - Payload: { agent_id, email, role, name }
+  - Expiry: 7 days
+  - Stored in: localStorage (key: insuredesk_token)
+  - Sent as: Authorization: Bearer <token>
+
+  Password Storage:
+  - hashlib.sha256(password.encode()).hexdigest()
+  - No salt (suitable for demo; production should use bcrypt/argon2)
+
+  Role-Based Access Control:
+  - "admin" role: sees all agents' clients, policies, commissions
+  - "agent" role: sees only own data
+  - Enforced in SQL queries (WHERE agent_id=? for agents)
+  - Hierarchy visibility enforced via recursive CTE (not UI masking)
+
+  Frontend Route Protection:
+  - AuthGuard component wraps all routes
+  - Redirects to /login if no token present
+  - Token expiry results in 401 → toast error (manual re-login required)
+
+================================================================================
+  8. COMMISSION ENGINE
+================================================================================
+
+  When a policy transitions to "Issued" status, two things happen atomically:
+
+  Step 1 — Legacy commissions row (backward-compatible):
+    INSERT INTO commissions: one row for the writing agent at base rate
+
+  Step 2 — Ledger BFS engine (compute_and_insert_ledger):
+
+  Algorithm:
+  1. BASE entry: writing agent earns (premium × base_rate%) — visibility SELF
+  2. BFS upward through agent_hierarchy:
+     - Start from writing_agent_id
+     - visited set prevents cycles
+     - For each direct upline found:
+       a. Check commission_rules for product+level-specific override %
+       b. Fall back to agent_hierarchy.override_percentage if no rule
+       c. Compute amount = premium × pct% (using Python Decimal, 4 dp)
+       d. INSERT OVERRIDE row — visibility DOWNLINE
+     - Add upline to frontier, increment depth
+     - Stop at MAX_LEVELS = 5 or when no more uplines found
+  3. All inserts share the same uncommitted transaction as the
+     commissions row — fully atomic (all succeed or all roll back)
+
+  Example with 4-agent hierarchy (pol-XXX, premium=$1000):
+
+    Sofia Park (agent-005, writing agent):
+      └─► LEDGER: BASE  level=0 10.00% $100.0000 (visible to Sofia)
+
+    Rachel Chen (agent-003, L1 upline, 3% override):
+      └─► LEDGER: OVERRIDE level=1 3.00% $30.0000 (visible to Rachel + uplines)
+
+    Alex Morgan (agent-001, L2 upline, 5% override via agent_hierarchy OR
+                 2.5% via commission_rules for Whole Life Advantage):
+      └─► LEDGER: OVERRIDE level=2 2.50% $25.0000 (visible to admin only)
+
+  Visibility Engine (get_visible_agent_ids):
+    Uses SQLite recursive CTE to collect all downlines of a viewer.
+    Returns: [viewer_id] + all_downline_ids
+    Applied as: WHERE agent_id IN (?, ?, ...) on all ledger queries.
+    Admin bypasses filter entirely.
+
+================================================================================
+  9. AGENT HIERARCHY SYSTEM
+================================================================================
+
+  Design: Directed Graph (not a tree)
+  - Stored as edge table (agent_hierarchy), not parent_id column on agents
+  - One agent can have multiple uplines (e.g. shared MGA)
+  - Transitive relationships discovered by BFS at query/write time
+  - Only direct edges stored; no denormalized path cache
+
+  Cycle Prevention:
+  - On POST /api/hierarchy/link: before inserting, run get_visible_agent_ids
+    on the downline agent. If the proposed upline is already a descendant
+    of the downline, return 400 "This link would create a cycle."
+
+  Demo Hierarchy (5 agents):
+
+    Alex Morgan (admin/MGA) — agent-001
+    ├── Jordan Rivera (agent) — agent-002  [5% override to Alex]
+    └── Rachel Chen (agent) — agent-003    [5% override to Alex]
+        ├── Marcus Webb (agent) — agent-004 [3% override to Rachel]
+        └── Sofia Park (agent) — agent-005  [3% override to Rachel]
+
+  BFS from Marcus (agent-004) when issuing a policy:
+    Level 0: Marcus     → BASE (10%)
+    Level 1: Rachel     → OVERRIDE (3% or rule-based)
+    Level 2: Alex/MGA   → OVERRIDE (5% or 2.5% for Whole Life Advantage)
+
+  Commission Rules (product-specific overrides):
+    Product: Whole Life Advantage (prod-003)
+      Level 1 upline: 4.0% (instead of 3% from edge)
+      Level 2 upline: 2.5% (instead of 5% from edge)
+
+================================================================================
+  10. SEED DATA & DEMO ENVIRONMENT
+================================================================================
+
+  Demo Accounts:
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  Role   │  Email                       │  Password   │  Agent   │
+  ├─────────┼──────────────────────────────┼─────────────┼──────────┤
+  │  Admin  │  admin@insuredesk.com        │  admin123   │  Alex    │
+  │  Agent  │  agent@insuredesk.com        │  agent123   │  Jordan  │
+  │  Agent  │  rachel.chen@insuredesk.com  │  agent123   │  Rachel  │
+  │  Agent  │  marcus.webb@insuredesk.com  │  agent123   │  Marcus  │
+  │  Agent  │  sofia.park@insuredesk.com   │  agent123   │  Sofia   │
+  └─────────┴──────────────────────────────┴─────────────┴──────────┘
+
+  Seed data includes:
+  - 5 agents (2 original + 3 new hierarchy agents)
+  - 5 insurance products
+  - 10 clients across all pipeline stages
+  - 13 policies (Draft through Lapsed, including renewals due soon)
+  - 11 commission records (sales + renewals)
+  - 17 ledger entries (11 BASE + 6 OVERRIDE, backfilled from commissions)
+  - 4 agent_hierarchy edges
+  - 2 commission_rules rows
+  - 8 tasks (mix of open/completed, overdue/upcoming)
+  - 37 activity log entries
+
+  The seed skips if clients table is non-empty (idempotent).
+  backfill_ledger() creates ledger entries from pre-existing commissions rows.
+
+================================================================================
+  11. DEPLOYMENT
+================================================================================
+
+  Platform: Render.com (free tier)
+  URL: https://insuredeck.onrender.com
+
+  Deployment process:
+  1. git push origin main
+  2. Render detects push via GitHub webhook
+  3. Render runs: pip install -r requirements.txt
+  4. Render runs: python app.py
+  5. On startup: init_db() creates all tables (IF NOT EXISTS — safe to re-run)
+  6. If clients table is empty → seed() runs automatically
+  7. Flask serves React SPA from frontend/dist/ for all non-API routes
+
+  requirements.txt:
+  - flask
+  - flask-cors
+  - PyJWT
+
+  Vite build output (frontend/dist/) is committed to Git so Render doesn't
+  need to run npm build. The dist/ folder is excluded from .gitignore for
+  this project.
+
+  Environment variables used:
+  - PORT  (set by Render automatically)
+  - RENDER (set by Render, disables Flask debug mode)
+  - JWT_SECRET (hardcoded for demo; should be env var in production)
+
+  CORS allowed origins:
+  - http://localhost:5173 (Vite dev)
+  - http://127.0.0.1:5173 (Vite dev)
+  - https://insuredeck.onrender.com (production)
+
+================================================================================
+  12. FILE STRUCTURE
+================================================================================
+
+  insuredesk/
+  ├── app.py                        Flask entry point, blueprint registration
+  ├── database.py                   SQLite init, get_db(), row_to_dict()
+  ├── seed.py                       Demo data + backfill_ledger()
+  ├── requirements.txt              Flask, flask-cors, PyJWT
+  │
+  ├── routes/
+  │   ├── auth.py                   Login, register, /me, decode_token()
+  │   ├── agents.py                 Agent CRUD
+  │   ├── clients.py                Client CRUD + search + lead score
+  │   ├── products.py               Product catalog CRUD
+  │   ├── policies.py               Policy CRUD + FSM transitions
+  │   ├── commissions.py            Commission records + summary + forecast
+  │   ├── activities.py             Activity log CRUD
+  │   ├── tasks.py                  Task management CRUD
+  │   ├── analytics.py              Production metrics + aggregations
+  │   ├── needs_analysis.py         Needs assessment worksheets
+  │   └── hierarchy.py              Commission engine + graph + ledger routes
+  │
+  └── frontend/
+      ├── package.json              React, Vite, Tailwind, Zustand, @xyflow/react
+      ├── vite.config.js            Dev proxy: /api → localhost:5000
+      ├── tailwind.config.js        Custom brand colors, animations
+      ├── index.html                SPA entry point
+      │
+      ├── src/
+      │   ├── App.jsx               Router, AuthGuard, Toast system
+      │   ├── api.js                Fetch wrapper, all API functions
+      │   │
+      │   ├── store/
+      │   │   └── useStore.js       Zustand store (auth, clients, policies,
+      │   │                         commissions, tasks, analytics, hierarchy,
+      │   │                         ledger, toasts)
+      │   │
+      │   ├── components/
+      │   │   ├── Sidebar.jsx       Navigation with overdue task badge
+      │   │   ├── DataTable.jsx     Reusable sortable/searchable table
+      │   │   ├── DetailPanel.jsx   Slide-in edit panel
+      │   │   └── StatusBadge.jsx   Color-coded status pills
+      │   │
+      │   └── pages/
+      │       ├── Login.jsx         Auth screen
+      │       ├── Dashboard.jsx     Tasks + pipeline snapshot
+      │       ├── Clients.jsx       Lead/client list + create modal
+      │       ├── ClientDetail.jsx  Client 360 view
+      │       ├── Pipeline.jsx      Kanban board
+      │       ├── Products.jsx      Product catalog
+      │       ├── NeedsAnalysis.jsx Needs assessment worksheet
+      │       ├── Applications.jsx  In-progress policies
+      │       ├── Policies.jsx      All policies + FSM controls
+      │       ├── Commissions.jsx   Commission records + forecast
+      │       ├── Renewals.jsx      Renewal monitoring
+      │       ├── Analytics.jsx     Production metrics dashboard
+      │       ├── HierarchyGraph.jsx  React Flow agent hierarchy canvas
+      │       └── CommissionLedger.jsx  KPI + flow visualizer + ledger table
+      │
+      └── dist/                     Vite production build (committed to Git)
+
+================================================================================
+  13. KEY DESIGN DECISIONS
+================================================================================
+
+  1. SQLite over PostgreSQL
+     SQLite's WAL mode handles concurrent reads well for a single-server
+     deployment. Zero operational overhead — no separate database process.
+     Row factory + json-auto-decode makes it behave like a document store
+     for JSON columns.
+
+  2. Graph edge table (not parent_id column) for hierarchy
+     An agent can have multiple uplines (e.g., shared MGA). A parent_id
+     column on the agents table would only support a tree. The edge table
+     supports arbitrary DAG structures with transitive BFS traversal.
+
+  3. Immutable commission ledger (INSERT only)
+     Every earning is permanent. No UPDATE path exists on commission_ledger.
+     Corrections are new rows (reversal pattern). This satisfies:
+     - E&O (Errors & Omissions) audit requirements
+     - State DOI compliance expectations
+     - Dispute resolution with verifiable paper trail
+
+  4. Backend-enforced visibility (not UI masking)
+     get_visible_agent_ids() runs a recursive CTE and returns a list.
+     The WHERE agent_id IN (...) clause filters at the SQL level.
+     The amount field is simply absent from the JSON response for restricted
+     rows — it is never sent to the browser at all, not just hidden in CSS.
+
+  5. Zero-disruption ledger migration
+     The existing commissions table and all callers (routes, frontend) were
+     left completely untouched. commission_ledger is purely additive.
+     backfill_ledger() seeds historical ledger rows from existing data.
+
+  6. Atomic commission writes
+     Both the commissions INSERT and all commission_ledger INSERTs share
+     the same uncommitted transaction in transition_policy(). Either all
+     succeed (db.commit()) or all roll back on exception.
+
+  7. Decimal precision for money
+     Python's decimal.Decimal with ROUND_HALF_UP at 4 decimal places
+     prevents floating-point rounding errors in commission calculations.
+     Stored as SQLite REAL (IEEE 754 double), with 4dp rounding applied
+     before storage.
+
+  8. BFS max depth (MAX_LEVELS = 5)
+     Prevents runaway traversal in deeply nested or malformed hierarchies.
+     In practice, US insurance rarely exceeds 3 levels (Agent→Manager→MGA).
+
+  9. React Flow (@xyflow/react v12) for hierarchy visualization
+     Chosen for its React-native integration, built-in pan/zoom/minimap,
+     custom node support, and smooth-step edge routing. The BFS layout
+     algorithm assigns positions based on hierarchy level — no external
+     layout library needed.
+
+  10. Zustand over Redux for state management
+      Simpler API with less boilerplate. Each domain (clients, policies,
+      tasks, hierarchy, ledger) gets its own slice within a single store.
+      Works well with React 18 concurrent features.
+
+================================================================================
+  14. FEATURE TIMELINE (What Was Built in Each Phase)
+================================================================================
+
+  PHASE 1 — Authentication & Multi-Agent Foundation
+  --------------------------------------------------
+  • JWT auth system (login, register, token decode)
+  • Agent profiles (NPN, license states, phone)
+  • Role system (admin vs agent)
+  • All data tagged to creating agent
+  • AuthGuard on all frontend routes
+  • Password hashing (SHA-256)
+  • Login page (Login.jsx)
+
+  PHASE 2 — Core CRM Features
+  ----------------------------
+  • Full client CRUD with lead scoring
+  • Pipeline stage management
+  • Product catalog with eligibility rules
+  • Policy lifecycle (FSM with 7 states)
+  • Eligibility validation on policy creation
+    (age, income, premium min/max)
+  • Commission tracking on policy issuance
+  • Activity logging
+  • DataTable, DetailPanel, StatusBadge components
+  • Sidebar navigation
+
+  PHASE 3 — Stickiness & Intelligence
+  ------------------------------------
+  • Dashboard with task manager (overdue highlights)
+  • Task CRUD (priority, due dates, client/policy links)
+  • Needs Analysis worksheet + product recommendation engine
+  • Lead source tracking (8 categories)
+  • Lead scoring algorithm (profile completeness, time decay, stage velocity)
+  • Analytics dashboard (MTD/YTD metrics, pipeline funnel, activity metrics)
+  • Commission forecasting (pipeline probability-weighted + renewal forecast)
+  • Renewal monitoring page (30/60/90 day windows)
+  • 12-month commission trend (historical data)
+  • US market conversion (USD, US phone formats, US state licensing)
+
+  PHASE 4 — Agent Hierarchy + Commission Ledger (Production-Grade)
+  ----------------------------------------------------------------
+  • agent_hierarchy graph edge table (directed, UNIQUE, cycle-safe)
+  • commission_ledger immutable table (append-only, no UPDATE ever)
+  • commission_rules product-specific override schedule
+  • BFS commission engine (compute_and_insert_ledger):
+    - BASE entries for writing agents
+    - OVERRIDE entries for all uplines (transitive)
+    - Max 5 levels, visited-set cycle guard
+    - Python Decimal for monetary precision
+  • Visibility engine (recursive CTE):
+    - Backend-enforced at SQL level
+    - Amount field physically absent from payload for restricted rows
+  • 7 new /api/hierarchy/* routes
+  • 3 new demo agents (Rachel Chen, Marcus Webb, Sofia Park)
+  • 4 hierarchy edges, 2 commission_rules
+  • backfill_ledger() for existing commission records
+  • HierarchyGraph.jsx (React Flow canvas):
+    - Custom AgentNode (avatar, role, earnings/••••)
+    - BFS layout algorithm
+    - Smooth-step edges with override % labels
+    - Admin slide-in link creation panel
+    - Cycle detection before save
+  • CommissionLedger.jsx:
+    - KPI summary (BASE/OVERRIDE/total)
+    - Policy flow visualizer (horizontal arrow chain)
+    - Full ledger DataTable
+  • Sidebar: Agent Hierarchy + Ledger nav items
+
+================================================================================
+  PROJECT STATS
+================================================================================
+
+  Backend files            : 12 Python files
+  Frontend pages           : 14 React pages/views
+  Frontend components      : 4 reusable components
+  API endpoints            : 40+ routes across 11 blueprints
+  Database tables          : 16 (including 3 new hierarchy/ledger tables)
+  Database indexes         : 20+
+  Lines of code (approx.)  : ~4,500 backend + ~5,000 frontend
+  Seed data rows           : 5 agents, 10 clients, 5 products, 13 policies,
+                             11 commissions, 17 ledger rows, 8 tasks, 37 activities
+  Git commits              : 6 feature commits (US market, auth, analytics,
+                             needs analysis, lead scoring, hierarchy/ledger)
+  Total build time         : Built iteratively with Claude Code AI assistance
+
+================================================================================
+  END OF DOCUMENT
+  InsureDesk Agent Portal — Built with Claude Code (Anthropic)
+  GitHub: github.com/RahulProduct08/insuredeckproject
+  Live:   https://insuredeck.onrender.com
+================================================================================
