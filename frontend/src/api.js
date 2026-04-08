@@ -90,6 +90,19 @@ export const getAnalyticsSummary = (params) => request('GET', `/analytics/summar
 export const getNeedsAnalyses = (clientId) => request('GET', `/needs-analysis/client/${clientId}`)
 export const createNeedsAnalysis = (body) => request('POST', '/needs-analysis', body)
 
+// Underwriting
+export const createUWApplication   = (body)   => request('POST', '/underwriting/applications', body)
+export const getUWApplications     = ()        => request('GET',  '/underwriting/queue').then(r => [...r.pended, ...r.manual_review])
+export const getUWApplication      = (id)      => request('GET',  `/underwriting/applications/${id}`)
+export const runUnderwriting       = (id, body) => request('POST', `/underwriting/applications/${id}/run`, body)
+export const getUWRisk             = (id)      => request('GET',  `/underwriting/applications/${id}/risk`)
+export const getUWDecision         = (id)      => request('GET',  `/underwriting/applications/${id}/decision`)
+export const getUWRequirements     = (id)      => request('GET',  `/underwriting/applications/${id}/requirements`)
+export const fulfillUWRequirements = (id, body) => request('POST', `/underwriting/applications/${id}/requirements`, body)
+export const getUWAudit            = (id)      => request('GET',  `/underwriting/applications/${id}/audit`)
+export const issueUWPolicy         = (id)      => request('POST', `/underwriting/applications/${id}/issue`, {})
+export const getUWQueue            = ()        => request('GET',  '/underwriting/queue')
+
 // Hierarchy + Commission Ledger
 export const getHierarchyGraph = () => request('GET', '/hierarchy/graph')
 export const getAgentHierarchy = (id) => request('GET', `/hierarchy/agent/${id}`)

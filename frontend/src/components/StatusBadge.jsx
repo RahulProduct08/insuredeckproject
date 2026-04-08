@@ -16,6 +16,24 @@ const STATUS_STYLES = {
   Issued:        { dot: 'bg-green-500',   text: 'text-green-700'  },
   Rejected:      { dot: 'bg-red-500',     text: 'text-red-700'    },
   Lapsed:        { dot: 'bg-orange-500',  text: 'text-orange-700' },
+
+  // Underwriting lifecycle states
+  CREATED:                  { dot: 'bg-slate-400',   text: 'text-slate-600'  },
+  IN_PROGRESS:              { dot: 'bg-blue-500',    text: 'text-blue-700'   },
+  DATA_ENRICHED:            { dot: 'bg-violet-500',  text: 'text-violet-700' },
+  RISK_CLASSIFIED:          { dot: 'bg-amber-500',   text: 'text-amber-700'  },
+  DECISIONED:               { dot: 'bg-indigo-500',  text: 'text-indigo-700' },
+  APPROVED:                 { dot: 'bg-emerald-500', text: 'text-emerald-700'},
+  APPROVED_WITH_CONDITIONS: { dot: 'bg-teal-500',    text: 'text-teal-700'   },
+  REJECTED:                 { dot: 'bg-red-500',     text: 'text-red-700'    },
+  PENDED:                   { dot: 'bg-orange-500',  text: 'text-orange-700' },
+  ISSUED:                   { dot: 'bg-green-500',   text: 'text-green-700'  },
+
+  // Risk classes
+  PREFERRED:    { dot: 'bg-emerald-500', text: 'text-emerald-700' },
+  STANDARD:     { dot: 'bg-blue-500',    text: 'text-blue-700'    },
+  SUBSTANDARD:  { dot: 'bg-amber-500',   text: 'text-amber-700'   },
+  DECLINED:     { dot: 'bg-red-500',     text: 'text-red-700'     },
 }
 
 const FALLBACK = { dot: 'bg-slate-400', text: 'text-slate-600' }

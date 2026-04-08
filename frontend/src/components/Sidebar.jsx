@@ -5,6 +5,7 @@ import {
   CheckBadgeIcon, ArrowPathIcon, BanknotesIcon, HomeIcon,
   PresentationChartLineIcon, ClipboardDocumentListIcon,
   ArrowRightStartOnRectangleIcon, ShareIcon, ScaleIcon,
+  MagnifyingGlassCircleIcon,
 } from '@heroicons/react/24/outline'
 import useStore from '../store/useStore.js'
 
@@ -30,6 +31,7 @@ const NAV_GROUPS = [
     label: 'During Sales',
     links: [
       { to: '/applications',   label: 'Applications',     Icon: DocumentTextIcon },
+      { to: '/underwriting',   label: 'Underwriting',     Icon: MagnifyingGlassCircleIcon },
     ],
   },
   {
