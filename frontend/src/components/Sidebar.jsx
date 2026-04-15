@@ -46,7 +46,7 @@ const NAV_GROUPS = [
   {
     label: 'Simulation',
     links: [
-      { to: '/agent-chat', label: 'AI-DIE Agent', Icon: CpuChipIcon },
+      { to: '/agent-chat', label: 'SAM Agent', Icon: CpuChipIcon },
     ],
   },
 ]

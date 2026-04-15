@@ -67,7 +67,7 @@ export default function AgentChat() {
         setConversationId(data.conversation_id)
         setMessages([{
           role: 'assistant',
-          content: "Hi there! I'm Alex, your insurance advisor. It's great to connect with you today! 😊\n\nI'm here to help you find the right coverage for your needs — whether that's for your home, car, life, or family.\n\nTo get started, could I get your name?",
+          content: "Hi there! I'm SAM, your Sales And Marketing Agent. It's great to connect with you today! 😊\n\nI'm here to help you find the right coverage for your needs — whether that's for your home, car, life, or family.\n\nTo get started, could I get your name?",
         }])
       })
       .catch(() => setError('Could not connect to the advisor. Please try again.'))
@@ -119,7 +119,7 @@ export default function AgentChat() {
             <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-white rounded-full" />
           </div>
           <div>
-            <div className="text-sm font-semibold text-slate-800">Alex — Insurance Advisor</div>
+            <div className="text-sm font-semibold text-slate-800">SAM — Sales & Marketing Agent</div>
             <div className="text-xs text-emerald-500 font-medium">Online · Ready to help</div>
           </div>
         </div>
