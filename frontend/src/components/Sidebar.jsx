@@ -5,7 +5,7 @@ import {
   CheckBadgeIcon, ArrowPathIcon, BanknotesIcon, HomeIcon,
   PresentationChartLineIcon, ClipboardDocumentListIcon,
   ArrowRightStartOnRectangleIcon, ShareIcon, ScaleIcon,
-  MagnifyingGlassCircleIcon,
+  MagnifyingGlassCircleIcon, CpuChipIcon,
 } from '@heroicons/react/24/outline'
 import useStore from '../store/useStore.js'
 
@@ -41,6 +41,12 @@ const NAV_GROUPS = [
       { to: '/renewals',           label: 'Renewals',          Icon: ArrowPathIcon },
       { to: '/commissions',        label: 'Commissions',       Icon: BanknotesIcon },
       { to: '/commission-ledger',  label: 'Ledger',            Icon: ScaleIcon },
+    ],
+  },
+  {
+    label: 'Simulation',
+    links: [
+      { to: '/agent-chat', label: 'AI-DIE Agent', Icon: CpuChipIcon },
     ],
   },
 ]

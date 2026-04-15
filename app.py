@@ -17,6 +17,7 @@ from routes.analytics import analytics_bp
 from routes.needs_analysis import needs_bp
 from routes.hierarchy import hierarchy_bp
 from routes.underwriting import underwriting_bp
+from routes.agent_chat import agent_chat_bp
 
 # ── Startup ────────────────────────────────────────────────────────────────
 init_db()
@@ -47,6 +48,7 @@ app.register_blueprint(analytics_bp)
 app.register_blueprint(needs_bp)
 app.register_blueprint(hierarchy_bp)
 app.register_blueprint(underwriting_bp, url_prefix="/api")
+app.register_blueprint(agent_chat_bp)
 
 
 @app.route("/api/health")

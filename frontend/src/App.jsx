@@ -22,6 +22,7 @@ import NeedsAnalysis from './pages/NeedsAnalysis.jsx'
 import HierarchyGraph from './pages/HierarchyGraph.jsx'
 import CommissionLedger from './pages/CommissionLedger.jsx'
 import Underwriting from './pages/Underwriting.jsx'
+import AgentChat from './pages/AgentChat.jsx'
 import useStore from './store/useStore.js'
 
 const TOAST_CONFIG = {
@@ -82,6 +83,7 @@ function AppLayout() {
           <Route path="/hierarchy"          element={<HierarchyGraph />} />
           <Route path="/commission-ledger"  element={<CommissionLedger />} />
           <Route path="/underwriting"       element={<Underwriting />} />
+          <Route path="/agent-chat"         element={<AgentChat />} />
         </Routes>
       </main>
     </div>

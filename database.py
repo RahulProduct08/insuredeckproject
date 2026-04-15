@@ -303,6 +303,26 @@ def init_db() -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_req_app    ON application_requirements(application_id);
         CREATE INDEX IF NOT EXISTS idx_req_status ON application_requirements(status);
+
+        -- ── AI-DIE Chat Sessions ──────────────────────────────────────────────────
+
+        CREATE TABLE IF NOT EXISTS agent_conversations (
+            id            TEXT PRIMARY KEY,
+            agent_id      TEXT REFERENCES agents(agent_id),
+            session_label TEXT,
+            created_at    TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS agent_messages (
+            id              TEXT PRIMARY KEY,
+            conversation_id TEXT NOT NULL REFERENCES agent_conversations(id),
+            role            TEXT NOT NULL,
+            content         TEXT NOT NULL,
+            created_at      TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_agent_msgs_conv     ON agent_messages(conversation_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_conv_agent    ON agent_conversations(agent_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_conv_created  ON agent_conversations(created_at);
     """)
 
     conn.commit()

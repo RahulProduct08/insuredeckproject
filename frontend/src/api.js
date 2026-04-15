@@ -103,6 +103,11 @@ export const getUWAudit            = (id)      => request('GET',  `/underwriting
 export const issueUWPolicy         = (id)      => request('POST', `/underwriting/applications/${id}/issue`, {})
 export const getUWQueue            = ()        => request('GET',  '/underwriting/queue')
 
+// AI-DIE Agent Chat
+export const createAgentConversation = (body) => request('POST', '/agent-chat/conversations', body || {})
+export const sendAgentMessage = (convId, content) => request('POST', `/agent-chat/conversations/${convId}/messages`, { content })
+export const getAgentMessages = (convId) => request('GET', `/agent-chat/conversations/${convId}/messages`)
+
 // Hierarchy + Commission Ledger
 export const getHierarchyGraph = () => request('GET', '/hierarchy/graph')
 export const getAgentHierarchy = (id) => request('GET', `/hierarchy/agent/${id}`)

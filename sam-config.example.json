@@ -1,0 +1,17 @@
+{
+  "firebase": {
+    "apiKey": "YOUR_FIREBASE_API_KEY",
+    "authDomain": "your-project.firebaseapp.com",
+    "projectId": "your-project",
+    "storageBucket": "your-project.appspot.com",
+    "messagingSenderId": "YOUR_MESSAGING_SENDER_ID",
+    "appId": "YOUR_APP_ID"
+  },
+  "gemini": {
+    "apiKey": "YOUR_GEMINI_API_KEY"
+  },
+  "underwriting": {
+    "apiUrl": "http://localhost:5000/api",
+    "enabled": true
+  }
+}
