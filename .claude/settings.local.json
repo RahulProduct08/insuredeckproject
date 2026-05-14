@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npm.cmd install:*)",
-      "Bash(npx.cmd --yes @xyflow/react)"
+      "Bash(npx.cmd --yes @xyflow/react)",
+      "WebFetch(domain:rahulproduct08.github.io)"
     ]
   }
 }

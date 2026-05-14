@@ -1,0 +1,497 @@
+/* Temple Quest - Web Version CSS */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --saffron: #ff8c00;
+    --deep-blue: #191b70;
+    --emerald: #32cd32;
+    --gold: #ffd700;
+    --dark-red: #8b0000;
+    --sky-blue: #87ceeb;
+    --cream: #f5f5dc;
+    --purple: #800080;
+    --light-green: #90ee90;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, var(--deep-blue) 0%, var(--sky-blue) 100%);
+}
+
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+}
+
+.container {
+    width: 100%;
+    max-width: 1400px;
+    padding: 20px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, var(--saffron), var(--deep-blue));
+    color: white;
+    border-radius: 10px;
+    width: 100%;
+}
+
+.header h1 {
+    font-size: 2.5em;
+    margin-bottom: 5px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.subtitle {
+    font-size: 1.2em;
+    font-style: italic;
+    opacity: 0.9;
+}
+
+.game-wrapper {
+    position: relative;
+    background: linear-gradient(180deg, var(--sky-blue) 0%, var(--light-blue) 100%);
+    border: 5px solid var(--deep-blue);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    margin-bottom: 20px;
+    animation: gamePulse 2s ease-in-out infinite;
+}
+
+@keyframes gamePulse {
+    0%, 100% {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    50% {
+        box-shadow: 0 12px 40px rgba(255, 140, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--sky-blue);
+}
+
+.hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 20px;
+    background: linear-gradient(90deg, var(--cream), var(--emerald));
+    border-radius: 10px;
+    margin-bottom: 20px;
+    gap: 20px;
+}
+
+.hud-left, .hud-right {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+}
+
+.hud-left {
+    justify-content: flex-start;
+}
+
+.hud-right {
+    justify-content: flex-end;
+}
+
+.hud-center {
+    flex: 1;
+    text-align: center;
+}
+
+.hud-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hud-item .label {
+    font-weight: bold;
+    color: var(--deep-blue);
+    font-size: 1em;
+}
+
+.hud-item .value {
+    color: var(--saffron);
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.controls-info {
+    display: flex;
+    gap: 30px;
+    width: 100%;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: var(--cream);
+    border-radius: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.controls-section {
+    background: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    border-left: 5px solid var(--saffron);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.controls-section h3 {
+    color: var(--deep-blue);
+    margin-bottom: 10px;
+    font-size: 1.1em;
+}
+
+.controls-section p {
+    color: #333;
+    margin: 5px 0;
+    font-size: 0.95em;
+}
+
+.controls-section strong {
+    color: var(--saffron);
+}
+
+/* Modals */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.modal.show {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-content {
+    background: linear-gradient(135deg, var(--saffron), var(--deep-blue));
+    padding: 40px;
+    border-radius: 15px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    max-width: 500px;
+    width: 90%;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-content h2 {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.modal-subtitle {
+    font-size: 1.2em;
+    margin-bottom: 30px;
+    font-style: italic;
+}
+
+.modal-content p {
+    font-size: 1.2em;
+    margin-bottom: 15px;
+}
+
+.modal-content span {
+    color: var(--gold);
+    font-weight: bold;
+}
+
+.modal-hint {
+    color: var(--cream);
+    font-size: 1em;
+    margin-top: 20px;
+    font-style: italic;
+}
+
+.difficulty-btn {
+    background: var(--gold);
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.2em;
+    color: var(--deep-blue);
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 10px 5px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.difficulty-btn:hover {
+    background: var(--cream);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.difficulty-btn:active {
+    transform: translateY(-1px);
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes glow {
+    0%, 100% {
+        text-shadow: 0 0 5px rgba(255, 140, 0, 0.5);
+    }
+    50% {
+        text-shadow: 0 0 20px rgba(255, 140, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.6);
+    }
+}
+
+.header h1 {
+    animation: float 3s ease-in-out infinite;
+}
+
+.modal-content h2 {
+    animation: glow 2s ease-in-out infinite;
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    color: var(--deep-blue);
+    font-size: 0.9em;
+    border-top: 2px solid var(--saffron);
+    width: 100%;
+}
+
+footer a {
+    color: var(--saffron);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .container {
+        max-width: 95%;
+    }
+
+    .header h1 {
+        font-size: 2em;
+    }
+
+    #gameCanvas {
+        width: 100%;
+        height: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 1.5em;
+    }
+
+    .subtitle {
+        font-size: 1em;
+    }
+
+    .hud {
+        flex-direction: column;
+        padding: 15px;
+    }
+
+    .hud-left, .hud-right, .hud-center {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .controls-info {
+        flex-direction: column;
+    }
+
+    .controls-section {
+        width: 100%;
+    }
+
+    .modal-content {
+        padding: 30px 20px;
+        max-width: 90%;
+    }
+
+    .modal-content h2 {
+        font-size: 2em;
+    }
+
+    .difficulty-btn {
+        width: 100%;
+        font-size: 1em;
+        padding: 12px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 10px;
+        border-radius: 5px;
+    }
+
+    .header {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .header h1 {
+        font-size: 1.3em;
+    }
+
+    .subtitle {
+        font-size: 0.9em;
+    }
+
+    #gameCanvas {
+        min-height: 400px;
+    }
+
+    .hud {
+        padding: 10px;
+        margin-bottom: 15px;
+    }
+
+    .hud-item {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .hud-item .label,
+    .hud-item .value {
+        font-size: 0.9em;
+    }
+
+    .controls-info {
+        padding: 10px;
+        margin-bottom: 15px;
+        gap: 10px;
+    }
+
+    .controls-section {
+        padding: 10px 15px;
+    }
+
+    .controls-section h3 {
+        font-size: 1em;
+    }
+
+    .controls-section p {
+        font-size: 0.85em;
+    }
+
+    .modal-content {
+        padding: 25px 15px;
+        border-radius: 10px;
+    }
+
+    .modal-content h2 {
+        font-size: 1.5em;
+        margin-bottom: 15px;
+    }
+
+    .modal-content p {
+        font-size: 1em;
+        margin-bottom: 10px;
+    }
+
+    .difficulty-btn {
+        font-size: 0.9em;
+        padding: 10px 15px;
+        margin: 8px 3px;
+    }
+
+    footer {
+        padding: 15px 10px;
+        font-size: 0.8em;
+    }
+}
+
+/* Loading state */
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: linear-gradient(135deg, var(--deep-blue) 0%, var(--sky-blue) 100%);
+}
+
+.loading-spinner {
+    border: 5px solid var(--cream);
+    border-top: 5px solid var(--saffron);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}

@@ -1,0 +1,27 @@
+2026-05-14 03:29:02,486 - INFO - Config loaded from C:\Users\RahulRanjan\OneDrive - ASPYRAILABS PRIVATE LIMITED\Desktop\Test Claude\time_tracker_config.json
+2026-05-14 03:29:02,486 - INFO - Config loaded from C:\Users\RahulRanjan\OneDrive - ASPYRAILABS PRIVATE LIMITED\Desktop\Test Claude\time_tracker_config.json
+2026-05-14 03:29:17,749 - ERROR - Failed to initialize WebDriver: Message: session not created: This version of ChromeDriver only supports Chrome version 146
+Current browser version is 148.0.7778.97 with binary path C:\Program Files\Google\Chrome\Application\chrome.exe
+Stacktrace:
+	chromedriver!GetHandleVerifier [0x7ff7712029c5+2ed785]
+	chromedriver!GetHandleVerifier [0x7ff770f2a0d0+14e90]
+	chromedriver!(No symbol) [0x7ff770c8db2d]
+	chromedriver!(No symbol) [0x7ff770cd5c3d]
+	chromedriver!(No symbol) [0x7ff770cd4995]
+	chromedriver!(No symbol) [0x7ff770cceea7]
+	chromedriver!(No symbol) [0x7ff770cc97a1]
+	chromedriver!(No symbol) [0x7ff770d1dc51]
+	chromedriver!(No symbol) [0x7ff770d1d4b6]
+	chromedriver!(No symbol) [0x7ff770cd9298]
+	chromedriver!(No symbol) [0x7ff770cda183]
+	chromedriver!GetHandleVerifier [0x7ff77122de0d+318bcd]
+	chromedriver!GetHandleVerifier [0x7ff771228588+313348]
+	chromedriver!GetHandleVerifier [0x7ff771249d7a+334b3a]
+	chromedriver!GetHandleVerifier [0x7ff770f46785+31545]
+	chromedriver!GetHandleVerifier [0x7ff770f4facc+3a88c]
+	chromedriver!GetHandleVerifier [0x7ff770f33634+1e3f4]
+	chromedriver!GetHandleVerifier [0x7ff770f337e6+1e5a6]
+	chromedriver!GetHandleVerifier [0x7ff770f17e37+2bf7]
+	KERNEL32!BaseThreadInitThunk [0x7ffef83ae8d7+17]
+	ntdll!RtlUserThreadStart [0x7ffef8aec3fc+2c]
+

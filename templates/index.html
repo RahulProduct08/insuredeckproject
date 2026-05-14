@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏛️ Temple Quest - Indian Mario Adventure</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ TEMPLE QUEST 🏛️</h1>
+            <p class="subtitle">Indian Mario Adventure</p>
+        </div>
+
+        <div class="game-wrapper">
+            <canvas id="gameCanvas" width="1200" height="700"></canvas>
+        </div>
+
+        <div class="hud">
+            <div class="hud-left">
+                <div class="hud-item">
+                    <span class="label">Level:</span>
+                    <span class="value" id="level">1/8</span>
+                </div>
+                <div class="hud-item">
+                    <span class="label">Score:</span>
+                    <span class="value" id="score">0</span>
+                </div>
+            </div>
+            <div class="hud-center">
+                <div class="hud-item">
+                    <span class="label" id="status">Ready</span>
+                </div>
+            </div>
+            <div class="hud-right">
+                <div class="hud-item">
+                    <span class="label">Coins:</span>
+                    <span class="value" id="coins">0/0</span>
+                </div>
+                <div class="hud-item">
+                    <span class="label">Health:</span>
+                    <span class="value" id="health">❤️❤️❤️</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-info">
+            <div class="controls-section">
+                <h3>Controls</h3>
+                <p><strong>← →</strong> or <strong>A D</strong> - Move</p>
+                <p><strong>SPACE</strong> or <strong>↑ W</strong> - Jump</p>
+                <p><strong>1 2 3</strong> - Select Difficulty</p>
+            </div>
+            <div class="controls-section">
+                <h3>How to Play</h3>
+                <p>Collect all coins to complete level</p>
+                <p>Avoid enemies and hazards</p>
+                <p>Power-ups give special abilities</p>
+            </div>
+        </div>
+
+        <div class="modal" id="menu-modal">
+            <div class="modal-content">
+                <h2>🏛️ TEMPLE QUEST 🏛️</h2>
+                <p class="modal-subtitle">Indian Mario Adventure</p>
+                <button class="difficulty-btn" data-difficulty="easy">1. EASY</button>
+                <button class="difficulty-btn" data-difficulty="normal">2. NORMAL</button>
+                <button class="difficulty-btn" data-difficulty="hard">3. HARD</button>
+                <p class="modal-hint">Or press 1, 2, or 3 to select</p>
+            </div>
+        </div>
+
+        <div class="modal" id="game-over-modal">
+            <div class="modal-content">
+                <h2>GAME OVER</h2>
+                <p>Level: <span id="go-level">1</span></p>
+                <p>Score: <span id="go-score">0</span></p>
+                <p class="modal-hint">Press SPACE or click to restart</p>
+            </div>
+        </div>
+
+        <div class="modal" id="level-complete-modal">
+            <div class="modal-content">
+                <h2>🎉 LEVEL COMPLETE! 🎉</h2>
+                <p>Level: <span id="lc-level">1</span></p>
+                <p>Score: <span id="lc-score">0</span></p>
+                <p class="modal-hint">Press SPACE or click to continue</p>
+            </div>
+        </div>
+
+        <div class="modal" id="game-won-modal">
+            <div class="modal-content">
+                <h2>🏆 YOU WON! 🏆</h2>
+                <p>You Have Conquered All Temples!</p>
+                <p>Final Score: <span id="gw-score">0</span></p>
+                <p>Difficulty: <span id="gw-difficulty">NORMAL</span></p>
+                <p class="modal-hint">Press SPACE or click to play again</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Made with ❤️ for Indian gaming enthusiasts | <a href="https://github.com" target="_blank">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script src="/static/game_enhanced.js"></script>
+</body>
+</html>

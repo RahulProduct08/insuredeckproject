@@ -1,0 +1,49 @@
+{
+  "ems_config": {
+    "url": "YOUR_EMS_URL_HERE",
+    "username": "YOUR_USERNAME",
+    "password": "YOUR_PASSWORD"
+  },
+  "defaults": {
+    "customer": "Ibexis",
+    "project": "Functional Testing",
+    "date": "TODAY"
+  },
+  "daily_entries": [
+    {
+      "ticket": "IBEXIS-396",
+      "title": "Portal Enhancement – Display Index Starting and Ending Values",
+      "hours": 2.0,
+      "work_type": "Tester",
+      "notes": "tested index value display changes in INT1"
+    },
+    {
+      "ticket": "IBEXIS-389",
+      "title": "Correct Cost Basis in FAST for Policy M0009041",
+      "hours": 2.5,
+      "work_type": "Consultant",
+      "notes": "validated FAST cost basis correction for policy M0009041"
+    },
+    {
+      "ticket": "IBEXIS-419",
+      "title": "PROD: Unable to submit the app WD0019598",
+      "hours": 2.0,
+      "work_type": "Tester",
+      "notes": "reproduced PROD submission issue for WD0019598"
+    },
+    {
+      "ticket": "IBEXIS-427",
+      "title": "Add Filter for Reprocessed Renewal Letters",
+      "hours": 1.5,
+      "work_type": "Consultant",
+      "notes": "functional testing for renewal letter reprocessing filter"
+    },
+    {
+      "ticket": "IBEXIS-468",
+      "title": "PROD - Address Change Task Uploaded, but not saving the case image",
+      "hours": 2.0,
+      "work_type": "Tester",
+      "notes": "validated address change image save workflow in INT1"
+    }
+  ]
+}
