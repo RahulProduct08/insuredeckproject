@@ -17,7 +17,6 @@ from routes.analytics import analytics_bp
 from routes.needs_analysis import needs_bp
 from routes.hierarchy import hierarchy_bp
 from routes.underwriting import underwriting_bp
-from routes.agent_chat import agent_chat_bp
 
 # ── Startup ────────────────────────────────────────────────────────────────
 init_db()
